@@ -464,7 +464,8 @@ class AnimationEngine {
         }
     }
 
-    // ============ BIOLOGICAL EFFECTS (SMOOTH) ============
+    // ============ BIOLOGICAL EFFECTS ============
+    // Each effect represents a real biological event
 
     _effectGlow(entityId, t) {
         const entity = this.entities[entityId];
@@ -478,65 +479,165 @@ class AnimationEngine {
 
     _effectExtendPseudopods(t) {
         const macrophage = this.entities["macrophage"];
-        if (!macrophage) return;
-        macrophage.children.forEach(child => {
+        const bacterium = this.entities["bacterium"];
+        if (!macrophage || !bacterium) return;
+
+        // Calculate direction toward bacterium
+        const dir = new THREE.Vector3().subVectors(bacterium.position, macrophage.position).normalize();
+
+        macrophage.children.forEach((child, i) => {
             if (child.userData.isPseudopod) {
-                const scale = 1 + t * 1.2;
-                child.scale.set(this._lerp(child.scale.x, scale, 0.1), 1, this._lerp(child.scale.z, scale, 0.1));
+                // Each pseudopod extends differently - the one facing bacterium extends most
+                const podDir = new THREE.Vector3(Math.cos((i / 4) * Math.PI * 2 + Math.PI / 4), 0, Math.sin((i / 4) * Math.PI * 2 + Math.PI / 4));
+                const alignment = podDir.dot(dir);
+
+                // Pseudopods facing bacterium extend more
+                const extensionFactor = Math.max(0, alignment) * t * 2.5;
+                const baseExtension = t * 0.8;
+
+                // Elongate along its axis
+                child.scale.y = 1 + baseExtension + extensionFactor;
+
+                // Move outward from cell body
+                const outward = podDir.multiplyScalar(0.3 + extensionFactor * 0.4);
+                child.position.x = Math.cos((i / 4) * Math.PI * 2 + Math.PI / 4) * (0.9 + extensionFactor * 0.3);
+                child.position.z = Math.sin((i / 4) * Math.PI * 2 + Math.PI / 4) * (0.9 + extensionFactor * 0.3);
+
+                // Orient toward bacterium
+                if (extensionFactor > 0.5) {
+                    child.rotation.z = this._lerp(child.rotation.z, -dir.x * 0.8, 0.05);
+                    child.rotation.x = this._lerp(child.rotation.x, dir.z * 0.8, 0.05);
+                }
             }
         });
+
+        // Membrane undulation during extension
+        const body = macrophage.getObjectByName("CellBody");
+        if (body) {
+            body.material.emissive = new THREE.Color(0x4fc3f7);
+            body.material.emissiveIntensity = Math.sin(t * Math.PI * 6) * 0.15;
+        }
     }
 
     _effectEngulf(t) {
         const bacterium = this.entities["bacterium"];
+        const macrophage = this.entities["macrophage"];
         if (!bacterium) return;
-        // Smooth curve path toward macrophage
-        const startX = 8, endX = 0;
-        const startY = 0, peakY = 1.5;
-        const x = startX + (endX - startX) * t;
-        const y = peakY * Math.sin(t * Math.PI);
-        bacterium.position.set(x, y, 0);
-        // Smooth scale down
-        const scale = this._lerp(1, 0.4, t);
-        bacterium.scale.setScalar(Math.max(0.15, scale));
-        // Rotate while entering
-        bacterium.rotation.y += 0.03;
-        bacterium.rotation.z += 0.02;
+
+        // Phase 1 (0-0.3): Bacterium slides toward macrophage surface
+        // Phase 2 (0.3-0.7): Bacterium enters pseudopod cup
+        // Phase 3 (0.7-1.0): Membrane closes around bacterium
+
+        if (t < 0.3) {
+            // Slide toward macrophage
+            const slideT = t / 0.3;
+            bacterium.position.x = this._lerp(2.5, 1.2, slideT);
+            bacterium.position.y = this._lerp(0, 0.2, Math.sin(slideT * Math.PI));
+            bacterium.rotation.z += 0.02;
+        } else if (t < 0.7) {
+            // Enter pseudopod cup - lower into position
+            const cupT = (t - 0.3) / 0.4;
+            bacterium.position.x = this._lerp(1.2, 0.3, cupT);
+            bacterium.position.y = this._lerp(0.2, 0, cupT);
+            bacterium.rotation.y += 0.04;
+            bacterium.rotation.z += 0.03;
+            // Scale down slightly as it enters
+            const s = this._lerp(1, 0.6, cupT);
+            bacterium.scale.setScalar(Math.max(0.3, s));
+        } else {
+            // Membrane closes - bacterium moves inside
+            const closeT = (t - 0.7) / 0.3;
+            bacterium.position.x = this._lerp(0.3, 0, closeT);
+            bacterium.position.y = 0;
+            bacterium.rotation.y += 0.05;
+            const s = this._lerp(0.6, 0.3, closeT);
+            bacterium.scale.setScalar(Math.max(0.15, s));
+        }
+
+        // Pseudopods close around bacterium
+        if (macrophage && t > 0.5) {
+            const closeProgress = (t - 0.5) / 0.5;
+            macrophage.children.forEach((child, i) => {
+                if (child.userData.isPseudopod) {
+                    // Pseudopods tilt inward to close the cup
+                    const tiltAngle = closeProgress * 0.4;
+                    child.rotation.z = this._lerp(child.rotation.z, tiltAngle * Math.cos((i / 4) * Math.PI * 2), 0.08);
+                    child.rotation.x = this._lerp(child.rotation.x, tiltAngle * Math.sin((i / 4) * Math.PI * 2), 0.08);
+                }
+            });
+        }
     }
 
     _effectFormPhagosome(t) {
-        if (!this.entities["phagosome"] && t > 0.2) {
+        if (!this.entities["phagosome"] && t > 0.15) {
             const phagosome = AssetLibrary.createAsset("phagosome");
             phagosome.position.set(0, 0, 0);
             phagosome.scale.setScalar(0.01);
             this.scene.add(phagosome);
             this.entities["phagosome"] = phagosome;
+
+            // Hide bacterium - it's now inside
+            if (this.entities["bacterium"]) {
+                this.entities["bacterium"].visible = false;
+            }
         }
         const phagosome = this.entities["phagosome"];
         if (phagosome) {
-            const targetScale = Math.min(1, t * 2.5) * 0.3;
-            phagosome.scale.setScalar(this._lerp(phagosome.scale.x, Math.max(0.01, targetScale), 0.1));
-            // Gentle pulse
-            const pulse = 1 + Math.sin(t * Math.PI * 4) * 0.05;
-            phagosome.scale.multiplyScalar(pulse);
+            // Phagosome forms gradually
+            const targetScale = Math.min(1, t * 3) * 0.35;
+            phagosome.scale.setScalar(this._lerp(phagosome.scale.x, Math.max(0.01, targetScale), 0.08));
+
+            // Membrane wobble as it pinches off
+            const wobble = 1 + Math.sin(t * Math.PI * 8) * 0.08;
+            phagosome.scale.multiplyScalar(wobble);
+
+            // Glow while forming
+            const glow = Math.sin(t * Math.PI) * 0.3;
+            phagosome.children.forEach(child => {
+                if (child.material) {
+                    child.material.emissive = new THREE.Color(0x66bb6a);
+                    child.material.emissiveIntensity = glow;
+                }
+            });
         }
     }
 
     _effectFuseLysosomes(t) {
         const macrophage = this.entities["macrophage"];
+        const phagosome = this.entities["phagosome"];
+
+        // Phase 1 (0-0.4): Lysosomes move toward phagosome
+        // Phase 2 (0.4-0.7): First lysosome fuses
+        // Phase 3 (0.7-1.0): Phagolysosome forms
+
         if (macrophage) {
             macrophage.children.forEach(child => {
                 if (child.name.startsWith("Lysosome")) {
-                    // Smoothly move lysosomes toward center
-                    if (t < 0.5) {
-                        child.position.lerp(new THREE.Vector3(0, 0, 0), 0.05);
+                    if (t < 0.4) {
+                        // Move lysosomes toward center (phagosome location)
+                        const moveT = t / 0.4;
+                        const targetPos = new THREE.Vector3(0, 0, 0);
+                        child.position.lerp(targetPos, moveT * 0.08);
+
+                        // Lysosomes glow as they approach
+                        if (child.material) {
+                            child.material.emissive = new THREE.Color(0xfdd835);
+                            child.material.emissiveIntensity = moveT * 0.5;
+                        }
+                    } else if (t < 0.7) {
+                        // Fusion animation - lysosome merges with phagosome
+                        const fuseT = (t - 0.4) / 0.3;
+                        child.scale.setScalar(this._lerp(1, 0.1, fuseT));
+                        child.position.lerp(new THREE.Vector3(0, 0, 0), 0.15);
                     } else {
                         child.visible = false;
                     }
                 }
             });
         }
-        if (!this.entities["phagolysosome"] && t > 0.4) {
+
+        // Phagolysosome forms after fusion
+        if (!this.entities["phagolysosome"] && t > 0.5) {
             const pl = AssetLibrary.createAsset("phagolysosome");
             pl.position.set(0, 0, 0);
             pl.scale.setScalar(0.01);
@@ -545,62 +646,119 @@ class AnimationEngine {
         }
         const pl = this.entities["phagolysosome"];
         if (pl) {
-            const targetScale = Math.min(1, (t - 0.4) * 2) * 0.35;
-            pl.scale.setScalar(this._lerp(pl.scale.x, Math.max(0.01, targetScale), 0.1));
-            const pulse = 1 + Math.sin(t * Math.PI * 6) * 0.08;
-            pl.scale.multiplyScalar(pulse);
+            const targetScale = Math.min(1, (t - 0.5) * 3) * 0.4;
+            pl.scale.setScalar(this._lerp(pl.scale.x, Math.max(0.01, targetScale), 0.08));
+
+            // Acidic glow
+            const glow = 0.3 + Math.sin(t * Math.PI * 8) * 0.2;
+            const glowMesh = pl.getObjectByName("Glow");
+            if (glowMesh && glowMesh.material) {
+                glowMesh.material.opacity = glow;
+                glowMesh.scale.setScalar(1 + Math.sin(t * Math.PI * 6) * 0.1);
+            }
+
+            // pH indicator - color shifts from yellow to orange as acidifies
+            pl.children.forEach(child => {
+                if (child.material && child.name !== "Glow") {
+                    const acidT = Math.min(1, (t - 0.5) * 2.5);
+                    child.material.color.setHex(this._lerp(0x7cb342, 0xcc7a00, acidT));
+                }
+            });
         }
     }
 
     _effectDestroy(t) {
-        const bacterium = this.entities["bacterium"];
-        if (bacterium) {
-            const scale = this._lerp(0.15, 0, t);
-            bacterium.scale.setScalar(Math.max(0.001, scale));
-            bacterium.rotation.x += 0.08;
-            bacterium.rotation.y += 0.12;
-            bacterium.rotation.z += 0.06;
-            bacterium.children.forEach(child => {
-                if (child.material) {
-                    child.material.transparent = true;
-                    child.material.opacity = 1 - t;
-                }
-            });
-            // Dr. Doom celebrates
-            if (t > 0.5) this._animateDrDoomAngry(t - 0.5);
-        }
         const pl = this.entities["phagolysosome"];
-        if (pl) {
-            const glow = pl.getObjectByName("Glow");
-            if (glow && glow.material) {
-                glow.material.opacity = 0.3 + Math.sin(t * Math.PI * 8) * 0.25;
-                glow.scale.setScalar(1 + Math.sin(t * Math.PI * 6) * 0.15);
+        if (!pl) return;
+
+        // Phase 1 (0-0.3): ROS burst
+        // Phase 2 (0.3-0.7): Enzymatic degradation
+        // Phase 3 (0.7-1.0): Fragmentation complete
+
+        // ROS burst effect
+        if (t < 0.3) {
+            const burstT = t / 0.3;
+            const glowMesh = pl.getObjectByName("Glow");
+            if (glowMesh && glowMesh.material) {
+                glowMesh.material.opacity = 0.4 + burstT * 0.4;
+                glowMesh.material.color.setHex(0xffff00);
+                glowMesh.scale.setScalar(1 + burstT * 0.3);
             }
+
+            // Phagolysosome vibrates during burst
+            pl.position.x = Math.sin(t * Math.PI * 20) * 0.05;
+            pl.position.z = Math.cos(t * Math.PI * 20) * 0.05;
+        } else if (t < 0.7) {
+            // Digestion - internal degradation visualized
+            const digestT = (t - 0.3) / 0.4;
+            const glowMesh = pl.getObjectByName("Glow");
+            if (glowMesh && glowMesh.material) {
+                glowMesh.material.opacity = 0.3 + Math.sin(t * Math.PI * 12) * 0.2;
+                glowMesh.material.color.setHex(0xff8800);
+            }
+
+            // Pulsing indicating enzymatic activity
+            const pulse = 1 + Math.sin(t * Math.PI * 10) * 0.1;
+            pl.scale.setScalar(0.4 * pulse);
+
+            pl.position.x = Math.sin(t * Math.PI * 10) * 0.03;
+            pl.position.z = Math.cos(t * Math.PI * 10) * 0.03;
+        } else {
+            // Fragmentation - phagolysosome shrinks as contents are cleared
+            const clearT = (t - 0.7) / 0.3;
+            const scale = this._lerp(0.4, 0.15, clearT);
+            pl.scale.setScalar(scale);
+
+            const glowMesh = pl.getObjectByName("Glow");
+            if (glowMesh && glowMesh.material) {
+                glowMesh.material.opacity = this._lerp(0.3, 0, clearT);
+            }
+
+            // Slight drift as debris is cleared
+            pl.position.y = this._lerp(0, -0.2, clearT);
         }
     }
 
     _effectBacteriumSwim(t, localTime) {
         const bacterium = this.entities["bacterium"];
         if (!bacterium) return;
-        // Wavy swimming motion
+
+        // Realistic wavy swimming motion
         bacterium.position.y = Math.sin(localTime * 3) * 0.3;
         bacterium.position.z = Math.cos(localTime * 2) * 0.2;
+
+        // Flagellum wave
         bacterium.rotation.z = Math.sin(localTime * 4) * 0.15;
-        // Slowly approach
-        bacterium.position.x = this._lerp(bacterium.position.x, 3, 0.005);
+
+        // Slowly approach macrophage
+        bacterium.position.x = this._lerp(bacterium.position.x, 2.5, 0.003);
+
+        // Rotate slightly
+        bacterium.rotation.y += 0.01;
     }
 
     _effectMacrophagePatrol(t, localTime) {
         const macrophage = this.entities["macrophage"];
         if (!macrophage) return;
+
         // Gentle floating/patrolling motion
         macrophage.position.x = Math.sin(localTime * 0.5) * 0.5;
         macrophage.position.y = Math.sin(localTime * 0.8) * 0.15;
         macrophage.rotation.y = Math.sin(localTime * 0.3) * 0.2;
-        // Membrane undulation
+
+        // Membrane undulation - pseudopods wave gently
+        macrophage.children.forEach((child, i) => {
+            if (child.userData.isPseudopod) {
+                child.scale.y = 1 + Math.sin(localTime * 2 + i) * 0.15;
+                child.position.y = Math.sin(localTime * 1.5 + i * 0.5) * 0.05;
+            }
+        });
+
+        // Lysosomes drift inside
         macrophage.children.forEach(child => {
-            if (child.name === "Pseudopod_0" || child.name === "Pseudopod_2") {
-                child.scale.y = 1 + Math.sin(localTime * 2) * 0.15;
+            if (child.name.startsWith("Lysosome")) {
+                child.position.x += Math.sin(localTime + parseFloat(child.name.split("_")[1]) * 2) * 0.002;
+                child.position.z += Math.cos(localTime + parseFloat(child.name.split("_")[1]) * 2) * 0.002;
             }
         });
     }
@@ -615,7 +773,6 @@ class AnimationEngine {
                     child.material.emissive = new THREE.Color(0xffffff);
                     child.material.emissiveIntensity = pulse * 0.5;
                 }
-                // Subtle size pulse
                 const s = 1 + pulse * 0.1;
                 child.scale.setScalar(s);
             }
@@ -633,7 +790,7 @@ class AnimationEngine {
                 case "macrophage": case "human_cell":
                     entity.position.set(0, 0, 0); entity.scale.setScalar(1); entity.rotation.set(0, 0, 0); break;
                 case "bacterium":
-                    entity.position.set(8, 0, 0); entity.scale.setScalar(1); entity.rotation.set(0, 0, 0); break;
+                    entity.position.set(8, 0, 0); entity.scale.setScalar(1); entity.rotation.set(0, 0, 0); entity.visible = true; break;
                 case "phagosome": case "phagolysosome":
                     this.scene.remove(entity); delete this.entities[id]; break;
             }
@@ -645,7 +802,10 @@ class AnimationEngine {
                     child.visible = true;
                 }
                 child.scale.set(1, 1, 1);
-                if (child.userData.isPseudopod) child.scale.set(1, 1, 1);
+                if (child.userData.isPseudopod) {
+                    child.scale.set(1, 1, 1);
+                    child.rotation.set(0, 0, 0);
+                }
             });
         }
     }
