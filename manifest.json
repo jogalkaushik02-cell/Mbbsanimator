@@ -1,0 +1,13 @@
+{
+  "name": "MBBS Medical Animation",
+  "short_name": "MBBS MedAnimate",
+  "description": "AI-powered medical animations with full internet research from 7 databases",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
+  "orientation": "any",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
