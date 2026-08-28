@@ -31,6 +31,11 @@ const App = {
         this.updateOnlineStatus();
         window.addEventListener("online", () => this.updateOnlineStatus());
         window.addEventListener("offline", () => this.updateOnlineStatus());
+
+        // Show topic panel by default on mobile
+        if (window.innerWidth <= 900) {
+            document.querySelector(".sidebar.left-sidebar").classList.add("mobile-active");
+        }
     },
 
     connectUI() {
