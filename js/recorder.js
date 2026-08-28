@@ -1,6 +1,6 @@
 // ============================================
-// Video Recorder & Screenshot - Capture canvas
-// Works on Android + iOS Safari
+// Video Recorder - Capture & Download
+// Supports WebM (Chrome/Firefox) and MP4 (Safari)
 // ============================================
 
 const VideoRecorder = {
@@ -9,32 +9,26 @@ const VideoRecorder = {
     isRecording: false,
     stream: null,
     startTime: 0,
+    mimeType: "",
 
     async startRecording(canvasElement) {
         try {
             this.stream = canvasElement.captureStream(30);
             this.startTime = Date.now();
+            this.mimeType = this.getBestMimeType();
 
-            // Try to capture voice narration audio
+            // Try to capture voice narration
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const dest = audioCtx.createMediaStreamDestination();
-                const source = audioCtx.createMediaElementSource(document.createElement("audio"));
-                source.connect(dest);
-                if (dest.stream.getAudioTracks().length > 0) {
-                    this.stream.addTrack(dest.stream.getAudioTracks()[0]);
-                }
-            } catch (e) {
-                // Audio not available, record video only
-            }
+                const speakers = audioCtx.createMediaStreamDestination();
+                this.stream.getAudioTracks().forEach(t => speakers.addTrack(t));
+            } catch (e) {}
 
-            const mimeType = this.getBestMimeType();
+            const options = { videoBitsPerSecond: 5000000 };
+            if (this.mimeType) options.mimeType = this.mimeType;
 
-            this.mediaRecorder = new MediaRecorder(this.stream, {
-                mimeType: mimeType,
-                videoBitsPerSecond: 5000000
-            });
-
+            this.mediaRecorder = new MediaRecorder(this.stream, options);
             this.chunks = [];
 
             this.mediaRecorder.ondataavailable = (e) => {
@@ -48,7 +42,7 @@ const VideoRecorder = {
             this.mediaRecorder.start(100);
             this.isRecording = true;
 
-            return { success: true, mimeType };
+            return { success: true, mimeType: this.mimeType };
         } catch (err) {
             console.error("Recording failed:", err);
             return { success: false, error: err.message };
@@ -65,29 +59,36 @@ const VideoRecorder = {
     },
 
     saveVideo() {
-        const blob = new Blob(this.chunks, { type: "video/webm" });
+        const ext = this.mimeType.includes("mp4") ? "mp4" : "webm";
+        const blob = new Blob(this.chunks, { type: this.mimeType || "video/webm" });
         const url = URL.createObjectURL(blob);
         const duration = Math.round((Date.now() - this.startTime) / 1000);
         const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
+        const m = Math.floor(duration / 60);
+        const s = duration % 60;
 
         const a = document.createElement("a");
         a.href = url;
-        a.download = `medanimate-${Date.now()}.webm`;
+        a.download = "medanimate-" + Date.now() + "." + ext;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
 
         setTimeout(() => URL.revokeObjectURL(url), 10000);
 
-        return { size: blob.size, sizeMB, duration, filename: a.download };
+        return {
+            size: blob.size,
+            sizeMB,
+            duration: m + ":" + String(s).padStart(2, "0"),
+            filename: a.download
+        };
     },
 
-    // Take a screenshot of the canvas
     takeScreenshot(canvasElement) {
         const dataURL = canvasElement.toDataURL("image/png");
         const a = document.createElement("a");
         a.href = dataURL;
-        a.download = `medanimate-screenshot-${Date.now()}.png`;
+        a.download = "medanimate-" + Date.now() + ".png";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -95,21 +96,31 @@ const VideoRecorder = {
     },
 
     getBestMimeType() {
-        const types = [
-            "video/webm;codecs=vp9,opus",
-            "video/webm;codecs=vp8,opus",
-            "video/webm;codecs=vp9",
-            "video/webm;codecs=vp8",
-            "video/webm",
+        // Try MP4 first (plays on everything - Android, iOS, Windows)
+        const mp4Types = [
             "video/mp4",
-            "video/ogg"
+            "video/mp4;codecs=avc1",
+            "video/mp4;codecs=avc1.42E01E"
         ];
-        for (const type of types) {
+        for (const type of mp4Types) {
             if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type)) {
                 return type;
             }
         }
-        return "video/webm";
+
+        // Fallback to WebM VP8 (widely supported)
+        const webmTypes = [
+            "video/webm;codecs=vp8,opus",
+            "video/webm;codecs=vp8",
+            "video/webm"
+        ];
+        for (const type of webmTypes) {
+            if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type)) {
+                return type;
+            }
+        }
+
+        return "";
     },
 
     getRecordingDuration() {
@@ -117,13 +128,13 @@ const VideoRecorder = {
         const sec = Math.floor((Date.now() - this.startTime) / 1000);
         const m = Math.floor(sec / 60);
         const s = sec % 60;
-        return `${m}:${String(s).padStart(2, "0")}`;
+        return m + ":" + String(s).padStart(2, "0");
     },
 
     getEstimatedSize() {
         if (!this.isRecording || !this.startTime) return "0 MB";
         const sec = (Date.now() - this.startTime) / 1000;
         const mb = (sec * 0.5).toFixed(1);
-        return `~${mb} MB`;
+        return "~" + mb + " MB";
     }
 };

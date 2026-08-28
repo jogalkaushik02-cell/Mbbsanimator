@@ -201,21 +201,14 @@ const App = {
         document.getElementById("searchBtn").disabled = true;
         document.getElementById("researchStatus").textContent = "Searching all databases...";
 
-        // Countdown timer - ~15 seconds estimated
+        // Track actual elapsed time
         this.researchStartTime = Date.now();
-        this.researchEstimatedMs = 15000;
         this.researchTimerEl = document.getElementById("researchTimer");
         this.researchTimerInterval = setInterval(() => {
             const elapsed = Date.now() - this.researchStartTime;
-            const remaining = Math.max(0, this.researchEstimatedMs - elapsed);
-            const sec = Math.ceil(remaining / 1000);
-            if (sec > 0) {
-                this.researchTimerEl.textContent = "~" + sec + "s";
-            } else {
-                const overSec = Math.floor(elapsed / 1000);
-                this.researchTimerEl.textContent = overSec + "s...";
-            }
-        }, 250);
+            const sec = Math.floor(elapsed / 1000);
+            this.researchTimerEl.textContent = sec + "s";
+        }, 500);
 
         this.startProgressBar(8);
 
@@ -247,7 +240,8 @@ const App = {
                 const data = await res.json();
                 this.researchData = data;
                 this.finishProgressBar();
-                this.researchTimerEl.textContent = "Done!";
+                const totalSec = Math.round((Date.now() - this.researchStartTime) / 1000);
+                this.researchTimerEl.textContent = totalSec + "s done";
                 this.updateSourceIndicators(data.research);
                 this.displayResearchResults(data.research);
                 document.getElementById("researchStatus").textContent = "Found " + (data.research.sourcesFound || 0) + " sources";
