@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a1628">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>MBBS MedAnimate</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <!-- Splash -->
+    <div id="splash" class="splash">
+        <div class="splash-content">
+            <div class="splash-dna">🧬</div>
+            <h1>MBBS MedAnimate</h1>
+            <p>AI-Powered Medical Animations</p>
+            <div class="loader"></div>
+            <p class="splash-sub">Researching 7 online databases...</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="app hidden">
+        <header class="top-bar">
+            <div class="logo">🧬 <span>MBBS MedAnimate</span></div>
+            <div class="online-badge" id="onlineBadge">🟢 Online</div>
+        </header>
+
+        <!-- Research Panel (shown during research) -->
+        <div id="researchPanel" class="research-panel hidden">
+            <div class="research-header">
+                <div class="research-spinner"></div>
+                <h3>Researching: <span id="researchTopic"></span></h3>
+            </div>
+            <div class="research-sources" id="researchSources">
+                <div class="source-item" id="src-pubmed">⏳ PubMed</div>
+                <div class="source-item" id="src-openalex">⏳ OpenAlex</div>
+                <div class="source-item" id="src-crossref">⏳ CrossRef</div>
+                <div class="source-item" id="src-semantic">⏳ Semantic Scholar</div>
+                <div class="source-item" id="src-wikipedia">⏳ Wikipedia</div>
+                <div class="source-item" id="src-scholar">⏳ Google Scholar</div>
+                <div class="source-item" id="src-duckduckgo">⏳ DuckDuckGo</div>
+            </div>
+            <div class="research-status" id="researchStatus">Searching...</div>
+        </div>
+
+        <main class="main-content">
+            <!-- Left Panel -->
+            <aside class="sidebar left-sidebar">
+                <div class="card topic-card">
+                    <h3>🔬 Medical Topic</h3>
+                    <div class="input-group">
+                        <input type="text" id="topicInput" placeholder="e.g. Pathogenesis of tuberculosis..." value="Phagocytosis">
+                        <button id="searchBtn" class="btn btn-primary">🔍 Research & Animate</button>
+                    </div>
+                </div>
+
+                <div class="card playback-card">
+                    <h3>▶️ Controls</h3>
+                    <div class="controls-row">
+                        <button id="playBtn" class="btn btn-control">▶ Play</button>
+                        <button id="pauseBtn" class="btn btn-control" disabled>⏸ Pause</button>
+                        <button id="replayBtn" class="btn btn-control">🔄 Replay</button>
+                    </div>
+                    <div class="slider-group">
+                        <label>Speed: <span id="speedVal">1.0x</span></label>
+                        <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1">
+                    </div>
+                    <div class="slider-group">
+                        <label>Zoom</label>
+                        <input type="range" id="zoomSlider" min="5" max="30" step="1" value="15">
+                    </div>
+                    <div class="timeline-group">
+                        <span id="timeDisplay">0:00 / 0:00</span>
+                        <input type="range" id="timelineSlider" min="0" max="100" step="0.1" value="0">
+                    </div>
+                </div>
+
+                <div class="card narration-card">
+                    <h3>🎙️ Narration</h3>
+                    <div id="narrationText" class="narration-text">Enter a topic and press Research to begin</div>
+                    <button id="voiceToggle" class="btn btn-small">🔊 Voice: ON</button>
+                    <button id="recordBtn" class="btn btn-record">⏺ Record Video</button>
+                </div>
+            </aside>
+
+            <!-- 3D Viewport -->
+            <section class="viewport-section">
+                <div id="stepLabel" class="step-label">Ready</div>
+                <div id="viewport3d" class="viewport-3d"></div>
+                <div id="entityTooltip" class="entity-tooltip hidden"></div>
+            </section>
+
+            <!-- Right Panel -->
+            <aside class="sidebar right-sidebar">
+                <div class="card info-card">
+                    <h3>📋 Structure Info</h3>
+                    <div id="entityInfo" class="entity-info">
+                        <p class="muted">Click any 3D structure to learn about it</p>
+                    </div>
+                </div>
+
+                <div class="card research-results-card">
+                    <h3>📚 Research Sources</h3>
+                    <div id="researchResults" class="research-results">
+                        <p class="muted">Sources will appear after research</p>
+                    </div>
+                </div>
+
+                <div id="quizCard" class="card quiz-card hidden">
+                    <h3>📝 Quiz</h3>
+                    <div id="quizQuestion" class="quiz-question"></div>
+                    <div id="quizOptions" class="quiz-options"></div>
+                    <div id="quizResult" class="quiz-result hidden"></div>
+                </div>
+
+                <div class="card history-card">
+                    <h3>📖 History</h3>
+                    <div id="historyList" class="history-list"></div>
+                </div>
+            </aside>
+        </main>
+
+        <footer class="bottom-bar">
+            <span id="statusText">Ready - Enter a medical topic and press Research</span>
+        </footer>
+    </div>
+
+    <script src="js/knowledge.js"></script>
+    <script src="js/assets.js"></script>
+    <script src="js/voice.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/recorder.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

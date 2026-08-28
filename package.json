@@ -1,0 +1,10 @@
+{
+  "name": "mbbs-medical-animation",
+  "version": "1.0.0",
+  "description": "AI-powered medical animation app with full internet research",
+  "private": true,
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "node-fetch": "^2.7.0"
+  }
+}
