@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+output/
+piper_models/
+*.onnx
+node_modules/
+dist/
+build/
+.DS_Store
+*.log
