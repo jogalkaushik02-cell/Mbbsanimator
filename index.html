@@ -13,7 +13,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
 </head>
 <body>
-    <!-- Splash -->
     <div id="splash" class="splash">
         <div class="splash-content">
             <div class="splash-dna">🧬</div>
@@ -24,20 +23,19 @@
         </div>
     </div>
 
-    <!-- Main App -->
     <div id="app" class="app hidden">
         <header class="top-bar">
             <div class="logo">🧬 <span>MBBS MedAnimate</span></div>
             <div class="online-badge" id="onlineBadge">🟢 Online</div>
         </header>
 
-        <!-- Research Panel (shown during research) -->
+        <!-- Research Panel -->
         <div id="researchPanel" class="research-panel hidden">
             <div class="research-header">
                 <div class="research-spinner"></div>
                 <h3>Researching: <span id="researchTopic"></span></h3>
             </div>
-            <div class="progress-bar-container" id="progressBarContainer">
+            <div class="progress-bar-container">
                 <div class="progress-bar" id="progressBar"></div>
                 <div class="progress-text" id="progressText">0%</div>
             </div>
@@ -54,7 +52,7 @@
         </div>
 
         <main class="main-content">
-            <!-- Left Panel -->
+            <!-- Desktop Left Panel -->
             <aside class="sidebar left-sidebar">
                 <div class="card topic-card">
                     <h3>🔬 Medical Topic</h3>
@@ -88,9 +86,7 @@
                 <div class="card narration-card">
                     <h3>🎙️ Narration</h3>
                     <div id="narrationText" class="narration-text">Enter a topic and press Research to begin</div>
-                    <div class="narration-btns">
-                        <button id="voiceToggle" class="btn btn-small">🔊 Voice: ON</button>
-                    </div>
+                    <button id="voiceToggle" class="btn btn-small">🔊 Voice: ON</button>
                     <div class="export-btns">
                         <button id="recordBtn" class="btn btn-record">⏺ Record Video</button>
                         <button id="screenshotBtn" class="btn btn-screenshot">📸 Screenshot</button>
@@ -103,10 +99,9 @@
             <section class="viewport-section">
                 <div id="stepLabel" class="step-label">Ready</div>
                 <div id="viewport3d" class="viewport-3d"></div>
-                <div id="entityTooltip" class="entity-tooltip hidden"></div>
             </section>
 
-            <!-- Right Panel -->
+            <!-- Desktop Right Panel -->
             <aside class="sidebar right-sidebar">
                 <div class="card info-card">
                     <h3>📋 Structure Info</h3>
@@ -136,13 +131,18 @@
             </aside>
         </main>
 
-        <!-- Mobile Bottom Nav -->
-        <nav class="mobile-nav" id="mobileNav">
-            <button class="mobile-nav-btn active" data-panel="topic">🔬</button>
-            <button class="mobile-nav-btn" data-panel="viewport">🎬</button>
-            <button class="mobile-nav-btn" data-panel="info">📋</button>
-            <button class="mobile-nav-btn" data-panel="quiz">📝</button>
-        </nav>
+        <!-- Mobile Bottom Bar - simplified -->
+        <div class="mobile-controls" id="mobileControls">
+            <div class="mobile-controls-row">
+                <button id="mobilePlayBtn" class="mobile-ctrl-btn">▶ Play</button>
+                <button id="mobilePauseBtn" class="mobile-ctrl-btn" disabled>⏸</button>
+                <button id="mobileReplayBtn" class="mobile-ctrl-btn">🔄</button>
+            </div>
+            <div class="mobile-controls-row">
+                <span id="mobileTimeDisplay" class="mobile-time">0:00 / 0:00</span>
+                <button id="mobileRecordBtn" class="mobile-ctrl-btn mobile-record">⏺</button>
+            </div>
+        </div>
 
         <footer class="bottom-bar">
             <span id="statusText">Ready - Enter a medical topic and press Research</span>

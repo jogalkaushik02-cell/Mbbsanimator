@@ -1,7 +1,3 @@
-// ============================================
-// Main App Controller - With Video Export + AI Research
-// ============================================
-
 const App = {
     engine: null,
     history: [],
@@ -16,6 +12,7 @@ const App = {
         setTimeout(() => {
             document.getElementById("splash").classList.add("hidden");
             document.getElementById("app").classList.remove("hidden");
+            if (this.engine) this.engine.onResize();
         }, 1500);
 
         VoiceManager.init();
@@ -28,36 +25,22 @@ const App = {
         this.engine.onEntityClick = (entity, p) => this.onEntityClick(entity, p);
 
         this.connectUI();
-        this.updateOnlineStatus();
-        window.addEventListener("online", () => this.updateOnlineStatus());
-        window.addEventListener("offline", () => this.updateOnlineStatus());
-
-        // Show topic panel by default on mobile
-        if (window.innerWidth <= 900) {
-            document.querySelector(".sidebar.left-sidebar").classList.add("mobile-active");
-        }
     },
 
     connectUI() {
         document.getElementById("searchBtn").addEventListener("click", () => this.startResearch());
         document.getElementById("topicInput").addEventListener("keydown", (e) => { if (e.key === "Enter") this.startResearch(); });
 
-        document.getElementById("playBtn").addEventListener("click", () => {
-            this.engine.play();
-            document.getElementById("playBtn").disabled = true;
-            document.getElementById("pauseBtn").disabled = false;
-        });
-        document.getElementById("pauseBtn").addEventListener("click", () => {
-            this.engine.pause();
-            document.getElementById("playBtn").disabled = false;
-            document.getElementById("pauseBtn").disabled = true;
-        });
-        document.getElementById("replayBtn").addEventListener("click", () => {
-            this.engine.replay();
-            document.getElementById("playBtn").disabled = true;
-            document.getElementById("pauseBtn").disabled = false;
-            if (this.currentQuiz.length > 0) this.showQuiz();
-        });
+        // Desktop controls
+        document.getElementById("playBtn").addEventListener("click", () => this.play());
+        document.getElementById("pauseBtn").addEventListener("click", () => this.pause());
+        document.getElementById("replayBtn").addEventListener("click", () => this.replay());
+
+        // Mobile controls
+        document.getElementById("mobilePlayBtn").addEventListener("click", () => this.play());
+        document.getElementById("mobilePauseBtn").addEventListener("click", () => this.pause());
+        document.getElementById("mobileReplayBtn").addEventListener("click", () => this.replay());
+        document.getElementById("mobileRecordBtn").addEventListener("click", () => this.toggleRecording());
 
         document.getElementById("recordBtn").addEventListener("click", () => this.toggleRecording());
         document.getElementById("screenshotBtn").addEventListener("click", () => this.takeScreenshot());
@@ -92,54 +75,36 @@ const App = {
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 this.engine.zoom((lastTouchDist - dist) * 0.05);
                 lastTouchDist = dist;
-                document.getElementById("zoomSlider").value = this.engine.cameraDistance;
             }
         });
-
-        // Mobile bottom nav
-        this.setupMobileNav();
     },
 
-    setupMobileNav() {
-        const navBtns = document.querySelectorAll(".mobile-nav-btn");
-        navBtns.forEach(btn => {
-            btn.addEventListener("click", () => {
-                navBtns.forEach(b => b.classList.remove("active"));
-                btn.classList.add("active");
-                const panel = btn.dataset.panel;
-                this.switchMobilePanel(panel);
-            });
-        });
+    play() {
+        this.engine.play();
+        document.getElementById("playBtn").disabled = true;
+        document.getElementById("pauseBtn").disabled = false;
+        document.getElementById("mobilePlayBtn").disabled = true;
+        document.getElementById("mobilePauseBtn").disabled = false;
     },
 
-    switchMobilePanel(panel) {
-        const leftSidebar = document.querySelector(".sidebar.left-sidebar");
-        const rightSidebar = document.querySelector(".sidebar.right-sidebar");
-        const viewport = document.querySelector(".viewport-section");
-
-        leftSidebar.classList.remove("mobile-active");
-        rightSidebar.classList.remove("mobile-active");
-        viewport.classList.remove("mobile-hidden");
-
-        switch (panel) {
-            case "topic":
-                leftSidebar.classList.add("mobile-active");
-                viewport.classList.add("mobile-hidden");
-                break;
-            case "viewport":
-                break;
-            case "info":
-                rightSidebar.classList.add("mobile-active");
-                viewport.classList.add("mobile-hidden");
-                break;
-            case "quiz":
-                rightSidebar.classList.add("mobile-active");
-                viewport.classList.add("mobile-hidden");
-                break;
-        }
+    pause() {
+        this.engine.pause();
+        document.getElementById("playBtn").disabled = false;
+        document.getElementById("pauseBtn").disabled = true;
+        document.getElementById("mobilePlayBtn").disabled = false;
+        document.getElementById("mobilePauseBtn").disabled = true;
     },
 
-    // ---- VIDEO RECORDING ----
+    replay() {
+        this.engine.replay();
+        document.getElementById("playBtn").disabled = true;
+        document.getElementById("pauseBtn").disabled = false;
+        document.getElementById("mobilePlayBtn").disabled = true;
+        document.getElementById("mobilePauseBtn").disabled = false;
+        if (this.currentQuiz.length > 0) this.showQuiz();
+    },
+
+    // ---- RECORDING ----
 
     async toggleRecording() {
         if (this.isRecording) {
@@ -156,11 +121,13 @@ const App = {
             this.isRecording = true;
             document.getElementById("recordBtn").textContent = "⏹ Stop Recording";
             document.getElementById("recordBtn").classList.add("recording");
+            const mobileRec = document.getElementById("mobileRecordBtn");
+            mobileRec.classList.add("recording");
             const statusEl = document.getElementById("recordStatus");
             statusEl.classList.remove("hidden");
             statusEl.textContent = "Recording... 0:00 | ~0 MB";
             this.recordTimer = setInterval(() => {
-                if (statusEl) {
+                if (statusEl && this.isRecording) {
                     statusEl.textContent = `Recording... ${VideoRecorder.getRecordingDuration()} | ${VideoRecorder.getEstimatedSize()}`;
                 }
             }, 1000);
@@ -175,6 +142,7 @@ const App = {
             this.isRecording = false;
             document.getElementById("recordBtn").textContent = "⏺ Record Video";
             document.getElementById("recordBtn").classList.remove("recording");
+            document.getElementById("mobileRecordBtn").classList.remove("recording");
             const statusEl = document.getElementById("recordStatus");
             statusEl.textContent = "Video saved! Check downloads.";
             setTimeout(() => statusEl.classList.add("hidden"), 3000);
@@ -182,8 +150,7 @@ const App = {
     },
 
     takeScreenshot() {
-        const canvas = this.engine.renderer.domElement;
-        VideoRecorder.takeScreenshot(canvas);
+        VideoRecorder.takeScreenshot(this.engine.renderer.domElement);
         document.getElementById("statusText").textContent = "Screenshot saved!";
     },
 
@@ -196,7 +163,7 @@ const App = {
     },
 
     updateProgressBar() {
-        if (this.progressTotal === 0) return;
+        if (!this.progressTotal) return;
         const pct = Math.min(100, Math.round((this.progressDone / this.progressTotal) * 100));
         const bar = document.getElementById("progressBar");
         const text = document.getElementById("progressText");
@@ -212,7 +179,7 @@ const App = {
         setTimeout(() => {
             if (bar) bar.style.width = "0%";
             if (text) text.textContent = "0%";
-        }, 1500);
+        }, 2000);
     },
 
     // ---- RESEARCH ----
@@ -228,32 +195,27 @@ const App = {
 
         ["pubmed", "openalex", "crossref", "semantic", "wikipedia", "scholar", "duckduckgo"].forEach(src => {
             const el = document.getElementById("src-" + src);
-            if (el) { el.className = "source-item"; }
+            if (el) { el.className = "source-item"; el.textContent = "⏳ " + el.textContent.replace("⏳ ", "").replace("✅ ", "").replace("❌ ", ""); }
         });
 
         document.getElementById("searchBtn").disabled = true;
-        document.getElementById("researchStatus").textContent = "Searching all databases in parallel...";
+        document.getElementById("researchStatus").textContent = "Searching all databases...";
 
-        // Start progress bar: 7 databases + 1 synthesis = 8 steps
         this.startProgressBar(8);
 
-        // Simulate incremental progress while waiting
-        const progressSteps = ["PubMed", "OpenAlex", "CrossRef", "SemanticScholar", "Wikipedia", "GoogleScholar", "DuckDuckGo", "Synthesizing"];
-        let currentStep = 0;
+        const dbNames = ["PubMed", "OpenAlex", "CrossRef", "SemanticScholar", "Wikipedia", "GoogleScholar", "DuckDuckGo"];
+        const dbIds = ["pubmed", "openalex", "crossref", "semantic", "wikipedia", "scholar", "duckduckgo"];
+        let step = 0;
         this.progressInterval = setInterval(() => {
-            if (currentStep < progressSteps.length) {
-                document.getElementById("researchStatus").textContent = "Searching " + progressSteps[currentStep] + "...";
-                currentStep++;
-                this.progressDone = currentStep;
+            if (step < dbNames.length) {
+                document.getElementById("researchStatus").textContent = "Searching " + dbNames[step] + "...";
+                const el = document.getElementById("src-" + dbIds[step]);
+                if (el) { el.className = "source-item loading"; }
+                step++;
+                this.progressDone = step;
                 this.updateProgressBar();
-                // Update source indicators as we go
-                if (currentStep <= 7) {
-                    const srcIds = ["pubmed", "openalex", "crossref", "semantic", "wikipedia", "scholar", "duckduckgo"];
-                    const el = document.getElementById("src-" + srcIds[currentStep - 1]);
-                    if (el) el.className = "source-item loading";
-                }
             }
-        }, 2000);
+        }, 1500);
 
         try {
             const res = await fetch("/api/full-research", {
@@ -270,7 +232,7 @@ const App = {
                 this.finishProgressBar();
                 this.updateSourceIndicators(data.research);
                 this.displayResearchResults(data.research);
-                document.getElementById("researchStatus").textContent = `Found ${data.research.sourcesFound || 0} sources`;
+                document.getElementById("researchStatus").textContent = "Found " + (data.research.sourcesFound || 0) + " sources";
 
                 if (data.synthesized) {
                     this.loadSynthesizedAnimation(data.synthesized, topic);
@@ -279,63 +241,61 @@ const App = {
                 }
             } else {
                 this.finishProgressBar();
-                const errText = await res.text().catch(() => "Unknown error");
                 document.getElementById("researchStatus").textContent = "Research failed (" + res.status + ")";
-                document.getElementById("statusText").textContent = "Server error: " + errText;
+                document.getElementById("statusText").textContent = "Server error. Please try again.";
             }
         } catch (err) {
             if (this.progressInterval) clearInterval(this.progressInterval);
             this.finishProgressBar();
-            console.error("Research error:", err);
             document.getElementById("researchStatus").textContent = "Error: " + (err.message || "Connection failed");
-            document.getElementById("statusText").textContent = "Failed to reach server. Check internet and try again.";
+            document.getElementById("statusText").textContent = "Connection error. Check internet.";
         }
 
         document.getElementById("searchBtn").disabled = false;
-        setTimeout(() => panel.classList.add("hidden"), 3000);
+        setTimeout(() => panel.classList.add("hidden"), 4000);
         this.addToHistory(topic);
     },
 
     updateSourceIndicators(research) {
-        const update = (src, count) => {
+        const update = (src, count, name) => {
             const el = document.getElementById("src-" + src);
             if (!el) return;
-            if (count > 0) { el.className = "source-item done"; } else { el.className = "source-item error"; }
+            if (count > 0) { el.className = "source-item done"; el.textContent = "✅ " + name + " (" + count + ")"; }
+            else { el.className = "source-item error"; el.textContent = "❌ " + name; }
         };
-        update("pubmed", research.pubmed?.count || 0);
-        update("openalex", research.openalex?.count || 0);
-        update("crossref", research.crossref?.count || 0);
-        update("semantic", research.semanticScholar?.count || 0);
-        update("wikipedia", research.wikipedia ? 1 : 0);
-        update("scholar", research.googleScholar?.count || 0);
-        update("duckduckgo", research.duckduckgo?.abstract ? 1 : 0);
+        update("pubmed", research.pubmed?.count || 0, "PubMed");
+        update("openalex", research.openalex?.count || 0, "OpenAlex");
+        update("crossref", research.crossref?.count || 0, "CrossRef");
+        update("semantic", research.semanticScholar?.count || 0, "SemanticScholar");
+        update("wikipedia", research.wikipedia ? 1 : 0, "Wikipedia");
+        update("scholar", research.googleScholar?.count || 0, "GoogleScholar");
+        update("duckduckgo", research.duckduckgo?.abstract ? 1 : 0, "DuckDuckGo");
     },
 
     displayResearchResults(research) {
         const container = document.getElementById("researchResults");
         let html = "";
-
         if (research.pubmed?.articles?.length > 0) {
-            html += `<div class="research-source"><h4>PubMed (${research.pubmed.count})</h4>`;
+            html += '<div class="research-source"><h4>PubMed (' + research.pubmed.count + ')</h4>';
             research.pubmed.articles.forEach(a => {
-                html += `<div class="research-article"><div class="article-title"><a href="${a.url}" target="_blank">${a.title}</a></div><div class="article-meta">${a.journal || ""} | ${a.year || ""}</div></div>`;
+                html += '<div class="research-article"><div class="article-title"><a href="' + a.url + '" target="_blank">' + a.title + '</a></div><div class="article-meta">' + (a.journal || "") + " | " + (a.year || "") + '</div></div>';
             });
             html += "</div>";
         }
         if (research.wikipedia) {
-            html += `<div class="research-source"><h4>Wikipedia</h4><div class="research-article"><div class="article-title"><a href="${research.wikipedia.url}" target="_blank">${research.wikipedia.title}</a></div></div></div>`;
+            html += '<div class="research-source"><h4>Wikipedia</h4><div class="research-article"><div class="article-title"><a href="' + research.wikipedia.url + '" target="_blank">' + research.wikipedia.title + '</a></div></div></div>';
         }
         if (research.openalex?.articles?.length > 0) {
-            html += `<div class="research-source"><h4>OpenAlex (${research.openalex.count})</h4>`;
+            html += '<div class="research-source"><h4>OpenAlex (' + research.openalex.count + ')</h4>';
             research.openalex.articles.slice(0, 3).forEach(a => {
-                html += `<div class="research-article"><div class="article-title"><a href="${a.url}" target="_blank">${a.title}</a></div><div class="article-meta">${a.journal || ""} | Cited: ${a.citedBy || 0}</div></div>`;
+                html += '<div class="research-article"><div class="article-title"><a href="' + a.url + '" target="_blank">' + a.title + '</a></div><div class="article-meta">' + (a.journal || "") + " | Cited: " + (a.citedBy || 0) + '</div></div>';
             });
             html += "</div>";
         }
         if (research.semanticScholar?.articles?.length > 0) {
-            html += `<div class="research-source"><h4>SemanticScholar (${research.semanticScholar.count})</h4>`;
+            html += '<div class="research-source"><h4>SemanticScholar (' + research.semanticScholar.count + ')</h4>';
             research.semanticScholar.articles.slice(0, 3).forEach(a => {
-                html += `<div class="research-article"><div class="article-title"><a href="${a.url}" target="_blank">${a.title}</a></div></div>`;
+                html += '<div class="research-article"><div class="article-title"><a href="' + a.url + '" target="_blank">' + a.title + '</a></div></div>';
             });
             html += "</div>";
         }
@@ -354,12 +314,12 @@ const App = {
             id: "synthesized",
             name: topic,
             description: synthesized.facts.slice(0, 3).map(f => f.text).join(" "),
-            duration: steps.length * 2.5 + 4,
+            duration: steps.length * 2.5 + 5,
             entities: ["macrophage", "bacterium"],
             steps: [
-                { name: "Introduction", duration: 3, narration: synthesized.narration[0]?.text || `Let us learn about ${topic}.`, effect: "doctor_explain", camera: { distance: 20, angle: 0 } },
+                { name: "Introduction", duration: 3, narration: synthesized.narration[0]?.text || "Let us learn about " + topic + ".", effect: "doctor_explain", camera: { distance: 20, angle: 0 } },
                 ...steps,
-                { name: "Summary", duration: 2, narration: `This concludes our lesson on ${topic}.`, effect: "doctor_explain", camera: { distance: 18, angle: 3.0 } }
+                { name: "Summary", duration: 2, narration: "This concludes our lesson on " + topic + ".", effect: "doctor_explain", camera: { distance: 18, angle: 3.0 } }
             ],
             quiz: synthesized.quiz || []
         };
@@ -367,35 +327,39 @@ const App = {
         this.currentRecipe = recipe;
         this.currentQuiz = recipe.quiz;
         this.engine.loadRecipe(recipe);
-
         document.getElementById("stepLabel").textContent = topic;
-        document.getElementById("statusText").textContent = "Loaded: " + topic + " (from " + synthesized.factsFound + " research facts)";
+        document.getElementById("statusText").textContent = "Loaded: " + topic + " (" + synthesized.factsFound + " facts, " + synthesized.sources.length + " sources)";
         this.showQuiz();
     },
 
     createGenericAnimation(topic) {
         const recipe = {
-            id: "generic", name: topic, description: topic, duration: 12,
+            id: "generic", name: topic, description: topic, duration: 14,
             entities: ["macrophage", "bacterium"],
             steps: [
-                { name: "Introduction", duration: 3, narration: `Welcome students. Today we will learn about ${topic}.`, effect: "doctor_explain", camera: { distance: 20, angle: 0 } },
-                { name: "Research", duration: 3, narration: `Researching ${topic} from medical databases. This topic will be covered based on available data.`, effect: "doctor_point_bacterium", camera: { distance: 16, angle: 0.5 } },
-                { name: "Key Concepts", duration: 3, narration: `The key concepts involve multiple mechanisms and pathways.`, effect: "doctor_write", camera: { distance: 12, angle: 1.0 } },
-                { name: "Summary", duration: 3, narration: `Understanding ${topic} is essential for medical practice.`, effect: "doctor_explain", camera: { distance: 18, angle: 1.5 } }
+                { name: "Introduction", duration: 3, narration: "Welcome. Today we will learn about " + topic + ".", effect: "doctor_explain", camera: { distance: 20, angle: 0 } },
+                { name: "Overview", duration: 3, narration: topic + " is an important medical concept studied across multiple disciplines.", effect: "doctor_point_bacterium", camera: { distance: 16, angle: 0.5 } },
+                { name: "Mechanism", duration: 4, narration: "The mechanism involves multiple molecular interactions and signaling pathways.", effect: "doctor_write", camera: { distance: 12, angle: 1.0 } },
+                { name: "Key Facts", duration: 2, narration: "Multiple research databases confirm the significance of this topic.", effect: "doctor_point_macrophage", camera: { distance: 14, angle: 1.5 } },
+                { name: "Summary", duration: 2, narration: "Understanding " + topic + " is essential for medical practice.", effect: "doctor_explain", camera: { distance: 18, angle: 2.0 } }
             ],
-            quiz: [{ question: `What is ${topic}?`, options: ["A medical concept", "A structure", "A disease", "A drug"], correct: 0, explanation: `${topic} is an important medical concept.` }]
+            quiz: [
+                { question: "What is " + topic + "?", options: ["A medical concept", "A laboratory tool", "A type of surgery", "A pharmaceutical drug"], correct: 0, explanation: topic + " is an important medical concept covered in this lesson." },
+                { question: "Why is understanding " + topic + " important?", options: ["Only for exams", "For clinical practice", "Not important", "Only for research"], correct: 1, explanation: "Understanding this topic is essential for clinical practice." }
+            ]
         };
         this.currentRecipe = recipe;
         this.currentQuiz = recipe.quiz;
         this.engine.loadRecipe(recipe);
         document.getElementById("stepLabel").textContent = topic;
-        document.getElementById("statusText").textContent = "Generic animation: " + topic;
+        document.getElementById("statusText").textContent = "Animation ready: " + topic;
+        this.showQuiz();
     },
 
     // ---- CALLBACKS ----
 
     onStepChange(step, index) {
-        document.getElementById("stepLabel").textContent = `${index + 1}. ${step.name}`;
+        document.getElementById("stepLabel").textContent = (index + 1) + ". " + step.name;
         VoiceManager.playStepSound();
     },
 
@@ -407,27 +371,29 @@ const App = {
     onFinish() {
         document.getElementById("playBtn").disabled = false;
         document.getElementById("pauseBtn").disabled = true;
+        document.getElementById("mobilePlayBtn").disabled = false;
+        document.getElementById("mobilePauseBtn").disabled = true;
         document.getElementById("statusText").textContent = "Animation complete";
         if (this.currentQuiz.length > 0) this.showQuiz();
         if (this.isRecording) this.stopRecording();
     },
 
     onTimeUpdate(elapsed, total) {
-        const pct = (elapsed / total) * 100;
         const eMin = Math.floor(elapsed / 60), eSec = Math.floor(elapsed % 60);
         const tMin = Math.floor(total / 60), tSec = Math.floor(total % 60);
-        document.getElementById("timeDisplay").textContent = `${eMin}:${String(eSec).padStart(2, "0")} / ${tMin}:${String(tSec).padStart(2, "0")}`;
+        const text = eMin + ":" + String(eSec).padStart(2, "0") + " / " + tMin + ":" + String(tSec).padStart(2, "0");
+        document.getElementById("timeDisplay").textContent = text;
+        document.getElementById("mobileTimeDisplay").textContent = text;
     },
 
     onEntityClick(entity, point) {
         const info = document.getElementById("entityInfo");
-        let html = `<h4>${entity.commonName}</h4><div class="scientific">${entity.scientificName}</div><p style="margin-top:8px">${entity.description}</p>`;
+        let html = "<h4>" + entity.commonName + "</h4><div class='scientific'>" + entity.scientificName + "</div><p style='margin-top:8px'>" + entity.description + "</p>";
         if (entity.functions) {
-            html += `<div style="margin-top:8px">`;
-            entity.functions.forEach(f => { html += `<span class="func-tag">${f}</span>`; });
+            html += "<div style='margin-top:8px'>";
+            entity.functions.forEach(f => { html += "<span class='func-tag'>" + f + "</span>"; });
             html += "</div>";
         }
-        if (entity.tags) html += `<div style="margin-top:6px;font-size:11px;color:var(--text-muted)">Tags: ${entity.tags.join(", ")}</div>`;
         info.innerHTML = html;
     },
 
@@ -442,12 +408,12 @@ const App = {
 
     renderQuiz() {
         if (this.currentQuizIndex >= this.currentQuiz.length) {
-            document.getElementById("quizQuestion").textContent = "Quiz Complete! 🎉";
+            document.getElementById("quizQuestion").textContent = "Quiz Complete!";
             document.getElementById("quizOptions").innerHTML = "";
             return;
         }
         const q = this.currentQuiz[this.currentQuizIndex];
-        document.getElementById("quizQuestion").textContent = `Q${this.currentQuizIndex + 1}: ${q.question}`;
+        document.getElementById("quizQuestion").textContent = "Q" + (this.currentQuizIndex + 1) + ": " + q.question;
         document.getElementById("quizResult").classList.add("hidden");
         const optionsDiv = document.getElementById("quizOptions");
         optionsDiv.innerHTML = "";
@@ -471,11 +437,11 @@ const App = {
         result.classList.remove("hidden");
         if (selected === correct) {
             result.className = "quiz-result correct";
-            result.textContent = "✅ Correct! " + explanation;
+            result.textContent = "Correct! " + explanation;
             VoiceManager.playCorrectSound();
         } else {
             result.className = "quiz-result wrong";
-            result.textContent = "❌ Incorrect. " + explanation;
+            result.textContent = "Incorrect. " + explanation;
             VoiceManager.playWrongSound();
         }
         setTimeout(() => { this.currentQuizIndex++; this.renderQuiz(); }, 3000);
@@ -504,19 +470,6 @@ const App = {
             });
             list.appendChild(item);
         });
-    },
-
-    updateOnlineStatus() {
-        const badge = document.getElementById("onlineBadge");
-        if (navigator.onLine) {
-            badge.textContent = "🟢 Online";
-            badge.style.borderColor = "var(--success)";
-            badge.style.color = "var(--success)";
-        } else {
-            badge.textContent = "🔴 Offline";
-            badge.style.borderColor = "var(--error)";
-            badge.style.color = "var(--error)";
-        }
     }
 };
 
