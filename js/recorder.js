@@ -1,5 +1,5 @@
 // ============================================
-// Video Recorder - Capture & Download as WebM
+// Video Recorder & Screenshot - Capture canvas
 // Works on Android + iOS Safari
 // ============================================
 
@@ -8,31 +8,31 @@ const VideoRecorder = {
     chunks: [],
     isRecording: false,
     stream: null,
-    audioStream: null,
+    startTime: 0,
 
-    // Start recording the 3D canvas + voice
     async startRecording(canvasElement) {
         try {
-            // Capture canvas video stream
-            this.stream = canvasElement.captureStream(30); // 30 FPS
+            this.stream = canvasElement.captureStream(30);
+            this.startTime = Date.now();
 
-            // Try to capture system audio (voice narration)
+            // Try to capture voice narration audio
             try {
-                const audioCtx = new AudioContext();
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const dest = audioCtx.createMediaStreamDestination();
-                // Connect system audio if available
-                this.stream.addTrack(dest.stream.getAudioTracks()[0] || new MediaStreamTrack());
+                const source = audioCtx.createMediaElementSource(document.createElement("audio"));
+                source.connect(dest);
+                if (dest.stream.getAudioTracks().length > 0) {
+                    this.stream.addTrack(dest.stream.getAudioTracks()[0]);
+                }
             } catch (e) {
-                // Audio capture not supported, record video only
-                console.log("Audio capture not available, recording video only");
+                // Audio not available, record video only
             }
 
-            // Determine best MIME type
             const mimeType = this.getBestMimeType();
 
             this.mediaRecorder = new MediaRecorder(this.stream, {
                 mimeType: mimeType,
-                videoBitsPerSecond: 5000000 // 5 Mbps for quality
+                videoBitsPerSecond: 5000000
             });
 
             this.chunks = [];
@@ -45,7 +45,7 @@ const VideoRecorder = {
                 this.saveVideo();
             };
 
-            this.mediaRecorder.start(100); // Collect data every 100ms
+            this.mediaRecorder.start(100);
             this.isRecording = true;
 
             return { success: true, mimeType };
@@ -55,7 +55,6 @@ const VideoRecorder = {
         }
     },
 
-    // Stop recording and save
     stopRecording() {
         if (this.mediaRecorder && this.isRecording) {
             this.mediaRecorder.stop();
@@ -65,30 +64,36 @@ const VideoRecorder = {
         return false;
     },
 
-    // Save the recorded video as downloadable file
     saveVideo() {
         const blob = new Blob(this.chunks, { type: "video/webm" });
         const url = URL.createObjectURL(blob);
+        const duration = Math.round((Date.now() - this.startTime) / 1000);
+        const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
 
-        // Create download link
         const a = document.createElement("a");
         a.href = url;
-        a.download = `medical-animation-${Date.now()}.webm`;
+        a.download = `medanimate-${Date.now()}.webm`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
 
-        // Cleanup
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
 
-        return {
-            size: blob.size,
-            duration: this.chunks.length * 0.1,
-            filename: a.download
-        };
+        return { size: blob.size, sizeMB, duration, filename: a.download };
     },
 
-    // Get best supported MIME type
+    // Take a screenshot of the canvas
+    takeScreenshot(canvasElement) {
+        const dataURL = canvasElement.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = dataURL;
+        a.download = `medanimate-screenshot-${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return true;
+    },
+
     getBestMimeType() {
         const types = [
             "video/webm;codecs=vp9,opus",
@@ -99,21 +104,26 @@ const VideoRecorder = {
             "video/mp4",
             "video/ogg"
         ];
-
         for (const type of types) {
-            if (MediaRecorder.isTypeSupported(type)) {
+            if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type)) {
                 return type;
             }
         }
-        return "video/webm"; // Fallback
+        return "video/webm";
     },
 
-    // Get recording state
-    getState() {
-        return {
-            isRecording: this.isRecording,
-            chunksCount: this.chunks.length,
-            estimatedSize: this.chunks.reduce((acc, c) => acc + c.size, 0)
-        };
+    getRecordingDuration() {
+        if (!this.isRecording || !this.startTime) return "0:00";
+        const sec = Math.floor((Date.now() - this.startTime) / 1000);
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m}:${String(s).padStart(2, "0")}`;
+    },
+
+    getEstimatedSize() {
+        if (!this.isRecording || !this.startTime) return "0 MB";
+        const sec = (Date.now() - this.startTime) / 1000;
+        const mb = (sec * 0.5).toFixed(1);
+        return `~${mb} MB`;
     }
 };

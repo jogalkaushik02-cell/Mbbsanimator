@@ -55,6 +55,7 @@ const App = {
         });
 
         document.getElementById("recordBtn").addEventListener("click", () => this.toggleRecording());
+        document.getElementById("screenshotBtn").addEventListener("click", () => this.takeScreenshot());
 
         document.getElementById("speedSlider").addEventListener("input", (e) => {
             const val = parseFloat(e.target.value);
@@ -148,21 +149,37 @@ const App = {
         const result = await VideoRecorder.startRecording(canvas);
         if (result.success) {
             this.isRecording = true;
-            document.getElementById("recordBtn").textContent = "⏹ Stop";
+            document.getElementById("recordBtn").textContent = "⏹ Stop Recording";
             document.getElementById("recordBtn").classList.add("recording");
-            document.getElementById("statusText").textContent = "Recording... (" + result.mimeType + ")";
+            const statusEl = document.getElementById("recordStatus");
+            statusEl.classList.remove("hidden");
+            statusEl.textContent = "Recording... 0:00 | ~0 MB";
+            this.recordTimer = setInterval(() => {
+                if (statusEl) {
+                    statusEl.textContent = `Recording... ${VideoRecorder.getRecordingDuration()} | ${VideoRecorder.getEstimatedSize()}`;
+                }
+            }, 1000);
         } else {
             document.getElementById("statusText").textContent = "Recording failed: " + result.error;
         }
     },
 
     stopRecording() {
+        if (this.recordTimer) clearInterval(this.recordTimer);
         if (VideoRecorder.stopRecording()) {
             this.isRecording = false;
-            document.getElementById("recordBtn").textContent = "⏺ Record";
+            document.getElementById("recordBtn").textContent = "⏺ Record Video";
             document.getElementById("recordBtn").classList.remove("recording");
-            document.getElementById("statusText").textContent = "Video saved! Check downloads.";
+            const statusEl = document.getElementById("recordStatus");
+            statusEl.textContent = "Video saved! Check downloads.";
+            setTimeout(() => statusEl.classList.add("hidden"), 3000);
         }
+    },
+
+    takeScreenshot() {
+        const canvas = this.engine.renderer.domElement;
+        VideoRecorder.takeScreenshot(canvas);
+        document.getElementById("statusText").textContent = "Screenshot saved!";
     },
 
     // ---- PROGRESS BAR ----
