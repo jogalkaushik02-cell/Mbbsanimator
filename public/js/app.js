@@ -142,13 +142,6 @@ const App = {
         document.getElementById("searchBtn").disabled = true;
         document.getElementById("researchStatus").textContent = "Searching all databases in parallel...";
 
-        if (!navigator.onLine) {
-            document.getElementById("researchStatus").textContent = "Offline - Internet connection required";
-            document.getElementById("statusText").textContent = "Error: No internet connection. Please connect and try again.";
-            document.getElementById("searchBtn").disabled = false;
-            return;
-        }
-
         try {
             const res = await fetch("/api/full-research", {
                 method: "POST",
@@ -169,13 +162,14 @@ const App = {
                     this.createGenericAnimation(topic);
                 }
             } else {
-                document.getElementById("researchStatus").textContent = "Research failed. Check connection.";
-                document.getElementById("statusText").textContent = "Research failed. Please try again.";
+                const errText = await res.text().catch(() => "Unknown error");
+                document.getElementById("researchStatus").textContent = "Research failed (" + res.status + ")";
+                document.getElementById("statusText").textContent = "Server error: " + errText;
             }
         } catch (err) {
             console.error("Research error:", err);
-            document.getElementById("researchStatus").textContent = "Connection error - check internet";
-            document.getElementById("statusText").textContent = "Connection error. Please check your internet and try again.";
+            document.getElementById("researchStatus").textContent = "Error: " + (err.message || "Connection failed");
+            document.getElementById("statusText").textContent = "Failed to reach server. Check internet and try again.";
         }
 
         document.getElementById("searchBtn").disabled = false;
