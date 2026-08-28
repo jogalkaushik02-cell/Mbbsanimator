@@ -317,30 +317,29 @@ const App = {
     },
 
     loadSynthesizedAnimation(synthesized, topic) {
-        const steps = synthesized.animationSteps.map((s, i) => ({
-            ...s,
-            narration: synthesized.narration[i]?.text || s.description,
-            effect: ["doctor_explain", "doctor_point_bacterium", "doctor_point_macrophage", "doctor_write", "glow_macrophage"][i % 5],
-            camera: { distance: 18 - (i * 1.5), angle: i * 0.4 }
+        const storyboard = synthesized.storyboard;
+        const scenes = storyboard?.scenes || synthesized.animationSteps || [];
+        const steps = scenes.map((s, i) => ({
+            name: s.name,
+            duration: s.duration || 4,
+            narration: synthesized.narration[i]?.text || s.narration || s.description,
+            effect: s.effect || "doctor_explain",
+            camera: s.camera || { distance: 18 - (i * 1.5), angle: i * 0.4 }
         }));
 
         const recipe = {
             id: "synthesized",
             name: topic,
             description: synthesized.facts.slice(0, 3).map(f => f.text).join(" "),
-            duration: steps.length * 2.5 + 5,
-            entities: ["macrophage", "bacterium"],
-            steps: [
-                { name: "Introduction", duration: 3, narration: synthesized.narration[0]?.text || "Let us learn about " + topic + ".", effect: "doctor_explain", camera: { distance: 20, angle: 0 } },
-                ...steps,
-                { name: "Summary", duration: 2, narration: "This concludes our lesson on " + topic + ".", effect: "doctor_explain", camera: { distance: 18, angle: 3.0 } }
-            ],
+            duration: steps.reduce((sum, s) => sum + s.duration, 0),
+            entities: storyboard?.scenes?.[0]?.entities || ["macrophage", "bacterium"],
+            steps,
             quiz: synthesized.quiz || []
         };
 
         this.currentRecipe = recipe;
         this.currentQuiz = recipe.quiz;
-        this.engine.loadRecipe(recipe);
+        this.engine.loadRecipe(recipe, storyboard);
         document.getElementById("stepLabel").textContent = topic;
         document.getElementById("statusText").textContent = "Loaded: " + topic + " (" + synthesized.factsFound + " facts, " + synthesized.sources.length + " sources)";
         this.showQuiz();
@@ -364,7 +363,7 @@ const App = {
         };
         this.currentRecipe = recipe;
         this.currentQuiz = recipe.quiz;
-        this.engine.loadRecipe(recipe);
+        this.engine.loadRecipe(recipe, null);
         document.getElementById("stepLabel").textContent = topic;
         document.getElementById("statusText").textContent = "Animation ready: " + topic;
         this.showQuiz();

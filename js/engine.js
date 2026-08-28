@@ -1,6 +1,6 @@
 // ============================================
-// Animation Engine - SMOOTH Keyframe Interpolation
-// Real animations, not slideshows
+// Animation Engine - Storyboard-driven 3D
+// Labels, camera transitions, biological animations
 // ============================================
 
 class AnimationEngine {
@@ -11,6 +11,7 @@ class AnimationEngine {
         this.renderer = null;
         this.entities = {};
         this.currentRecipe = null;
+        this.currentStoryboard = null;
         this.isPlaying = false;
         this.isPaused = false;
         this.elapsedTime = 0;
@@ -32,7 +33,47 @@ class AnimationEngine {
         this.isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         this.pixelRatio = this.isMobile ? 1 : Math.min(window.devicePixelRatio, 2);
         this.starCount = this.isMobile ? 100 : 500;
+        this.labelContainer = null;
+        this._createLabelOverlay();
         this.init();
+    }
+
+    _createLabelOverlay() {
+        this.labelContainer = document.createElement("div");
+        this.labelContainer.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;font-family:'Segoe UI',system-ui,sans-serif;";
+        this.viewport.style.position = "relative";
+        this.viewport.appendChild(this.labelContainer);
+    }
+
+    _updateLabels(scene) {
+        if (!this.labelContainer) return;
+        this.labelContainer.innerHTML = "";
+        if (!scene || !scene.labels) return;
+        const vw = this.viewport.clientWidth, vh = this.viewport.clientHeight;
+        for (const label of scene.labels) {
+            let screenPos;
+            if (label.entity && this.entities[label.entity]) {
+                const worldPos = new THREE.Vector3();
+                this.entities[label.entity].getWorldPosition(worldPos);
+                screenPos = worldPos.clone().project(this.camera);
+            } else if (label.position) {
+                const worldPos = new THREE.Vector3(label.position[0], label.position[1], label.position[2]);
+                screenPos = worldPos.clone().project(this.camera);
+            } else continue;
+            const x = (screenPos.x * 0.5 + 0.5) * vw + (label.offset ? label.offset[0] : 0);
+            const y = (-screenPos.y * 0.5 + 0.5) * vh + (label.offset ? label.offset[1] : 0);
+            const div = document.createElement("div");
+            div.style.cssText = "position:absolute;pointer-events:none;transition:all 0.4s ease;";
+            const isTitle = label.text && label.text.length < 30 && !label.entity;
+            if (isTitle) {
+                div.style.cssText += "top:12px;left:50%;transform:translateX(-50%);background:rgba(10,22,40,0.85);border:1px solid rgba(79,195,247,0.5);border-radius:8px;padding:6px 14px;color:#4fc3f7;font-size:13px;font-weight:600;letter-spacing:0.5px;white-space:nowrap;text-shadow:0 0 8px rgba(79,195,247,0.4);";
+            } else {
+                div.style.cssText += `left:${Math.max(10, Math.min(vw - 120, x))}px;top:${Math.max(10, Math.min(vh - 30, y - 15))}px;background:rgba(10,22,40,0.8);border:1px solid rgba(100,180,255,0.3);border-radius:4px;padding:3px 8px;color:#8ec8f0;font-size:11px;white-space:nowrap;`;
+                div.style.cssText += "font-weight:400;";
+            }
+            div.textContent = label.text;
+            this.labelContainer.appendChild(div);
+        }
     }
 
     init() {
@@ -104,11 +145,12 @@ class AnimationEngine {
         );
     }
 
-    // ============ LOAD RECIPE ============
+    // ============ LOAD RECIPE / STORYBOARD ============
 
-    loadRecipe(recipe) {
+    loadRecipe(recipe, storyboard) {
         this.clearScene();
         this.currentRecipe = recipe;
+        this.currentStoryboard = storyboard || null;
         this.elapsedTime = 0;
         this.currentStepIndex = -1;
         this.isPlaying = false;
@@ -133,8 +175,9 @@ class AnimationEngine {
             }
         }
 
-        this.cameraDistance = recipe.steps[0]?.camera?.distance || 15;
-        this.cameraAngle = recipe.steps[0]?.camera?.angle || 0;
+        const firstScene = this.currentStoryboard?.scenes?.[0];
+        this.cameraDistance = firstScene?.camera?.distance || recipe.steps[0]?.camera?.distance || 15;
+        this.cameraAngle = firstScene?.camera?.angle || recipe.steps[0]?.camera?.angle || 0;
     }
 
     clearScene() {
@@ -143,7 +186,9 @@ class AnimationEngine {
             delete this.entities[key];
         }
         this.currentRecipe = null;
+        this.currentStoryboard = null;
         this.currentStepIndex = -1;
+        if (this.labelContainer) this.labelContainer.innerHTML = "";
     }
 
     // ============ PLAYBACK ============
@@ -151,7 +196,7 @@ class AnimationEngine {
     play() { if (!this.currentRecipe) return; this.isPlaying = true; this.isPaused = false; VoiceManager.playClickSound(); }
     pause() { this.isPaused = true; VoiceManager.playClickSound(); }
     resume() { this.isPaused = false; }
-    replay() { this.elapsedTime = 0; this.currentStepIndex = -1; this.isPlaying = true; this.isPaused = false; this._resetEntities(); VoiceManager.playClickSound(); }
+    replay() { this.elapsedTime = 0; this.currentStepIndex = -1; this.isPlaying = true; this.isPaused = false; this._resetEntities(); if (this.labelContainer) this.labelContainer.innerHTML = ""; VoiceManager.playClickSound(); }
     togglePlayPause() { if (this.isPaused) this.resume(); else if (!this.isPlaying) this.play(); else this.pause(); }
     setSpeed(s) { this.playbackSpeed = Math.max(0.25, Math.min(3, s)); }
     zoom(d) { this.cameraDistance = Math.max(5, Math.min(30, this.cameraDistance + d)); }
@@ -190,6 +235,10 @@ class AnimationEngine {
                     this.currentStepIndex = i;
                     if (this.onStepChange) this.onStepChange(step, i);
                     if (step.narration && this.onNarration) this.onNarration(step.narration);
+                    // Update storyboard labels for this scene
+                    if (this.currentStoryboard && this.currentStoryboard.scenes[i]) {
+                        this._updateLabels(this.currentStoryboard.scenes[i]);
+                    }
                 }
                 const localTime = this.elapsedTime - accumulated;
                 const t = localTime / step.duration;
@@ -207,12 +256,20 @@ class AnimationEngine {
     _processStepSmooth(step, t, localTime) {
         const et = this._easeInOut(t);
 
-        // Camera movement - smooth orbit + zoom
-        if (step.camera) {
-            const targetDist = step.camera.distance;
-            const targetAngle = step.camera.angle;
+        // Camera movement from storyboard or step
+        const sceneData = this.currentStoryboard?.scenes?.[this.currentStepIndex];
+        const camData = sceneData?.camera || step.camera;
+        if (camData) {
+            const targetDist = camData.distance;
+            const targetAngle = camData.angle;
             this.cameraDistance = this._lerp(this.cameraDistance, targetDist, 0.02);
             this.cameraAngle = this._lerp(this.cameraAngle, targetAngle, 0.02);
+            if (camData.target) {
+                const tx = camData.target[0] || 0, ty = camData.target[1] || 0, tz = camData.target[2] || 0;
+                this.cameraTarget.x = this._lerp(this.cameraTarget.x, tx, 0.02);
+                this.cameraTarget.y = this._lerp(this.cameraTarget.y, ty, 0.02);
+                this.cameraTarget.z = this._lerp(this.cameraTarget.z, tz, 0.02);
+            }
         }
 
         if (!step.effect) return;
