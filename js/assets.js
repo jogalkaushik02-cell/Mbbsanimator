@@ -315,6 +315,356 @@ const AssetLibrary = {
         return group;
     },
 
+    // ============ NEUTROPHIL ============
+    createNeutrophil() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "neutrophil", clickable: true };
+        const bodyGeo = new THREE.SphereGeometry(1.0, 20, 16);
+        const bodyMat = new THREE.MeshPhongMaterial({ color: 0xe8d4e8, shininess: 40, transparent: true, opacity: 0.85 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.name = "CellBody";
+        group.add(body);
+        const nucGeo = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
+        const nucMat = new THREE.MeshPhongMaterial({ color: 0x6a0dad, shininess: 60 });
+        const nuc = new THREE.Mesh(nucGeo, nucMat);
+        nuc.rotation.x = Math.PI / 2;
+        nuc.name = "Nucleus";
+        group.add(nuc);
+        for (let i = 0; i < 8; i++) {
+            const granGeo = new THREE.SphereGeometry(0.06, 6, 4);
+            const granMat = new THREE.MeshPhongMaterial({ color: 0xff69b4 });
+            const gran = new THREE.Mesh(granGeo, granMat);
+            const a = (i / 8) * Math.PI * 2;
+            gran.position.set(Math.cos(a) * 0.6, (Math.random() - 0.5) * 0.4, Math.sin(a) * 0.6);
+            gran.name = "Granule_" + i;
+            group.add(gran);
+        }
+        return group;
+    },
+
+    // ============ LYMPHOCYTE (T-Cell) ============
+    createLymphocyte() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "lymphocyte", clickable: true };
+        const bodyGeo = new THREE.SphereGeometry(0.8, 20, 16);
+        const bodyMat = new THREE.MeshPhongMaterial({ color: 0x4169e1, shininess: 50, transparent: true, opacity: 0.85 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.name = "CellBody";
+        group.add(body);
+        const nucGeo = new THREE.SphereGeometry(0.5, 12, 10);
+        const nucMat = new THREE.MeshPhongMaterial({ color: 0x191970, shininess: 80 });
+        const nuc = new THREE.Mesh(nucGeo, nucMat);
+        nuc.name = "Nucleus";
+        group.add(nuc);
+        return group;
+    },
+
+    // ============ RED BLOOD CELL ============
+    createRedBloodCell() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "red_blood_cell", clickable: true };
+        const outerGeo = new THREE.TorusGeometry(0.6, 0.25, 12, 24);
+        const outerMat = new THREE.MeshPhongMaterial({ color: 0xcc0000, shininess: 40 });
+        const outer = new THREE.Mesh(outerGeo, outerMat);
+        outer.rotation.x = Math.PI / 2;
+        outer.name = "CellBody";
+        group.add(outer);
+        const centerGeo = new THREE.SphereGeometry(0.15, 8, 6);
+        const centerMat = new THREE.MeshPhongMaterial({ color: 0x990000, shininess: 30 });
+        const center = new THREE.Mesh(centerGeo, centerMat);
+        center.scale.y = 0.3;
+        group.add(center);
+        return group;
+    },
+
+    // ============ CANCER CELL ============
+    createCancerCell() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "cancer_cell", clickable: true };
+        const bodyGeo = new THREE.IcosahedronGeometry(1.0, 1);
+        const bodyMat = new THREE.MeshPhongMaterial({ color: 0x8b0000, shininess: 20, transparent: true, opacity: 0.8 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.name = "CellBody";
+        group.add(body);
+        const nucGeo = new THREE.SphereGeometry(0.4, 12, 10);
+        const nucMat = new THREE.MeshPhongMaterial({ color: 0x4a0000, shininess: 60 });
+        const nuc = new THREE.Mesh(nucGeo, nucMat);
+        nuc.position.set(0.2, 0.1, 0);
+        nuc.name = "Nucleus";
+        group.add(nuc);
+        for (let i = 0; i < 6; i++) {
+            const bumpGeo = new THREE.SphereGeometry(0.15, 6, 4);
+            const bumpMat = new THREE.MeshPhongMaterial({ color: 0xa00000 });
+            const bump = new THREE.Mesh(bumpGeo, bumpMat);
+            const a = (i / 6) * Math.PI * 2;
+            const r = 0.9;
+            bump.position.set(Math.cos(a) * r, (Math.random() - 0.5) * 0.5, Math.sin(a) * r);
+            bump.name = "Bump_" + i;
+            group.add(bump);
+        }
+        return group;
+    },
+
+    // ============ NEURON ============
+    createNeuron() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "neuron", clickable: true };
+        const somaGeo = new THREE.SphereGeometry(0.5, 16, 12);
+        const somaMat = new THREE.MeshPhongMaterial({ color: 0xffd700, shininess: 50 });
+        const soma = new THREE.Mesh(somaGeo, somaMat);
+        soma.name = "CellBody";
+        group.add(soma);
+        const nucGeo = new THREE.SphereGeometry(0.2, 10, 8);
+        const nucMat = new THREE.MeshPhongMaterial({ color: 0xb8860b, shininess: 80 });
+        const nuc = new THREE.Mesh(nucGeo, nucMat);
+        nuc.name = "Nucleus";
+        group.add(nuc);
+        for (let i = 0; i < 5; i++) {
+            const dendGeo = new THREE.CylinderGeometry(0.02, 0.06, 0.8, 6);
+            const dendMat = new THREE.MeshPhongMaterial({ color: 0xdaa520 });
+            const dend = new THREE.Mesh(dendGeo, dendMat);
+            const a = (i / 5) * Math.PI * 2;
+            dend.position.set(Math.cos(a) * 0.7, 0, Math.sin(a) * 0.7);
+            dend.rotation.z = -Math.cos(a) * 0.8;
+            dend.rotation.x = Math.sin(a) * 0.8;
+            dend.name = "Dendrite_" + i;
+            group.add(dend);
+        }
+        const axonGeo = new THREE.CylinderGeometry(0.03, 0.03, 2.0, 6);
+        const axonMat = new THREE.MeshPhongMaterial({ color: 0xdaa520 });
+        const axon = new THREE.Mesh(axonGeo, axonMat);
+        axon.position.set(0, -1.2, 0);
+        axon.name = "Axon";
+        group.add(axon);
+        for (let i = 0; i < 4; i++) {
+            const myelinGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.3, 8);
+            const myelinMat = new THREE.MeshPhongMaterial({ color: 0xf5f5dc });
+            const myelin = new THREE.Mesh(myelinGeo, myelinMat);
+            myelin.position.set(0, -0.5 - i * 0.4, 0);
+            myelin.name = "Myelin_" + i;
+            group.add(myelin);
+        }
+        return group;
+    },
+
+    // ============ VIRUS ============
+    createVirus() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "virus", clickable: true };
+        const coreGeo = new THREE.IcosahedronGeometry(0.5, 0);
+        const coreMat = new THREE.MeshPhongMaterial({ color: 0x228b22, shininess: 40 });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        core.name = "CellBody";
+        group.add(core);
+        for (let i = 0; i < 12; i++) {
+            const spikeGeo = new THREE.CylinderGeometry(0.02, 0.04, 0.3, 4);
+            const spikeMat = new THREE.MeshPhongMaterial({ color: 0x006400 });
+            const spike = new THREE.Mesh(spikeGeo, spikeMat);
+            const phi = Math.acos(1 - 2 * (i + 0.5) / 12);
+            const theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
+            spike.position.set(
+                Math.sin(phi) * Math.cos(theta) * 0.65,
+                Math.cos(phi) * 0.65,
+                Math.sin(phi) * Math.sin(theta) * 0.65
+            );
+            spike.lookAt(0, 0, 0);
+            spike.name = "Spike_" + i;
+            group.add(spike);
+        }
+        return group;
+    },
+
+    // ============ BRAIN ============
+    createBrain() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "brain", clickable: true };
+        const leftGeo = new THREE.SphereGeometry(1.2, 20, 16, 0, Math.PI);
+        const leftMat = new THREE.MeshPhongMaterial({ color: 0xffb6c1, shininess: 30 });
+        const left = new THREE.Mesh(leftGeo, leftMat);
+        left.position.x = -0.3;
+        left.name = "CellBody";
+        group.add(left);
+        const rightGeo = new THREE.SphereGeometry(1.2, 20, 16, 0, Math.PI);
+        const rightMat = new THREE.MeshPhongMaterial({ color: 0xffb6c1, shininess: 30 });
+        const right = new THREE.Mesh(rightGeo, rightMat);
+        right.rotation.y = Math.PI;
+        right.position.x = 0.3;
+        group.add(right);
+        for (let i = 0; i < 8; i++) {
+            const foldGeo = new THREE.TorusGeometry(0.3, 0.05, 6, 12);
+            const foldMat = new THREE.MeshPhongMaterial({ color: 0xff9999 });
+            const fold = new THREE.Mesh(foldGeo, foldMat);
+            const a = (i / 8) * Math.PI * 2;
+            fold.position.set(Math.cos(a) * 0.8, Math.sin(a) * 0.5, (Math.random() - 0.5) * 0.3);
+            fold.rotation.set(Math.random(), a, Math.random());
+            fold.name = "Fold_" + i;
+            group.add(fold);
+        }
+        const brainstemGeo = new THREE.CylinderGeometry(0.2, 0.15, 0.8, 8);
+        const brainstemMat = new THREE.MeshPhongMaterial({ color: 0xe8b4b8 });
+        const brainstem = new THREE.Mesh(brainstemGeo, brainstemMat);
+        brainstem.position.y = -1.1;
+        brainstem.name = "Brainstem";
+        group.add(brainstem);
+        return group;
+    },
+
+    // ============ HEART ============
+    createHeart() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "heart", clickable: true };
+        const bodyGeo = new THREE.SphereGeometry(1.0, 16, 12);
+        const bodyMat = new THREE.MeshPhongMaterial({ color: 0xcc0000, shininess: 50 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.scale.set(1, 1.2, 0.8);
+        body.name = "CellBody";
+        group.add(body);
+        const laGeo = new THREE.SphereGeometry(0.4, 10, 8);
+        const laMat = new THREE.MeshPhongMaterial({ color: 0x990000 });
+        const la = new THREE.Mesh(laGeo, laMat);
+        la.position.set(-0.4, 0.6, 0);
+        la.name = "LeftAtrium";
+        group.add(la);
+        const raGeo = new THREE.SphereGeometry(0.35, 10, 8);
+        const raMat = new THREE.MeshPhongMaterial({ color: 0x990000 });
+        const ra = new THREE.Mesh(raGeo, raMat);
+        ra.position.set(0.4, 0.6, 0);
+        ra.name = "RightAtrium";
+        group.add(ra);
+        const aoGeo = new THREE.CylinderGeometry(0.12, 0.15, 0.8, 8);
+        const aoMat = new THREE.MeshPhongMaterial({ color: 0xcc0000 });
+        const ao = new THREE.Mesh(aoGeo, aoMat);
+        ao.position.set(0, 1.0, 0);
+        ao.name = "Aorta";
+        group.add(ao);
+        return group;
+    },
+
+    // ============ BLOOD VESSEL ============
+    createBloodVessel() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "blood_vessel", clickable: true };
+        const wallGeo = new THREE.CylinderGeometry(0.6, 0.6, 3.0, 16, 1, true);
+        const wallMat = new THREE.MeshPhongMaterial({ color: 0xcc3333, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+        const wall = new THREE.Mesh(wallGeo, wallMat);
+        wall.rotation.z = Math.PI / 2;
+        wall.name = "CellBody";
+        group.add(wall);
+        const innerGeo = new THREE.CylinderGeometry(0.45, 0.45, 3.0, 16, 1, true);
+        const innerMat = new THREE.MeshPhongMaterial({ color: 0xffcccc, side: THREE.DoubleSide, transparent: true, opacity: 0.3 });
+        const inner = new THREE.Mesh(innerGeo, innerMat);
+        inner.rotation.z = Math.PI / 2;
+        inner.name = "Endothelium";
+        group.add(inner);
+        return group;
+    },
+
+    // ============ DNA DOUBLE HELIX ============
+    createDNA() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "dna", clickable: true };
+        for (let i = 0; i < 20; i++) {
+            const t = (i / 20) * Math.PI * 4;
+            const y = (i / 20) * 4 - 2;
+            const strand1Geo = new THREE.SphereGeometry(0.08, 6, 4);
+            const strand1Mat = new THREE.MeshPhongMaterial({ color: 0x0000ff });
+            const strand1 = new THREE.Mesh(strand1Geo, strand1Mat);
+            strand1.position.set(Math.cos(t) * 0.3, y, Math.sin(t) * 0.3);
+            group.add(strand1);
+            const strand2Geo = new THREE.SphereGeometry(0.08, 6, 4);
+            const strand2Mat = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+            const strand2 = new THREE.Mesh(strand2Geo, strand2Mat);
+            strand2.position.set(Math.cos(t + Math.PI) * 0.3, y, Math.sin(t + Math.PI) * 0.3);
+            group.add(strand2);
+            if (i % 2 === 0) {
+                const baseGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4);
+                const baseMat = new THREE.MeshPhongMaterial({ color: 0x00cc00 });
+                const base = new THREE.Mesh(baseGeo, baseMat);
+                base.position.set(0, y, 0);
+                base.rotation.z = Math.PI / 2;
+                base.lookAt(strand1.position);
+                group.add(base);
+            }
+        }
+        group.name = "CellBody";
+        return group;
+    },
+
+    // ============ ANTIBODY (IgG) ============
+    createAntibody() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "antibody", clickable: true };
+        const stemGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.6, 6);
+        const stemMat = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 60 });
+        const stem = new THREE.Mesh(stemGeo, stemMat);
+        stem.name = "CellBody";
+        group.add(stem);
+        const fab1Geo = new THREE.SphereGeometry(0.15, 10, 8);
+        const fab1Mat = new THREE.MeshPhongMaterial({ color: 0x4488ff, shininess: 60 });
+        const fab1 = new THREE.Mesh(fab1Geo, fab1Mat);
+        fab1.position.set(-0.2, 0.4, 0);
+        fab1.name = "Fab";
+        group.add(fab1);
+        const fab2Geo = new THREE.SphereGeometry(0.15, 10, 8);
+        const fab2Mat = new THREE.MeshPhongMaterial({ color: 0x4488ff, shininess: 60 });
+        const fab2 = new THREE.Mesh(fab2Geo, fab2Mat);
+        fab2.position.set(0.2, 0.4, 0);
+        group.add(fab2);
+        const fcGeo = new THREE.SphereGeometry(0.12, 10, 8);
+        const fcMat = new THREE.MeshPhongMaterial({ color: 0x4488ff, shininess: 60 });
+        const fc = new THREE.Mesh(fcGeo, fcMat);
+        fc.position.set(0, -0.4, 0);
+        fc.name = "Fc";
+        group.add(fc);
+        return group;
+    },
+
+    // ============ RECEPTOR PROTEIN ============
+    createReceptor() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "receptor", clickable: true };
+        const memGeo = new THREE.BoxGeometry(1.5, 0.1, 0.5);
+        const memMat = new THREE.MeshPhongMaterial({ color: 0xffcc00, transparent: true, opacity: 0.4 });
+        const mem = new THREE.Mesh(memGeo, memMat);
+        mem.name = "CellBody";
+        group.add(mem);
+        const extraGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.4, 8);
+        const extraMat = new THREE.MeshPhongMaterial({ color: 0xff6600 });
+        const extra = new THREE.Mesh(extraGeo, extraMat);
+        extra.position.y = 0.25;
+        extra.name = "Extracellular";
+        group.add(extra);
+        const intraGeo = new THREE.CylinderGeometry(0.06, 0.04, 0.3, 6);
+        const intraMat = new THREE.MeshPhongMaterial({ color: 0xcc3300 });
+        const intra = new THREE.Mesh(intraGeo, intraMat);
+        intra.position.y = -0.2;
+        intra.name = "Intracellular";
+        group.add(intra);
+        return group;
+    },
+
+    // ============ STEM CELL ============
+    createStemCell() {
+        const group = new THREE.Group();
+        group.userData = { entityId: "stem_cell", clickable: true };
+        const bodyGeo = new THREE.SphereGeometry(0.9, 20, 16);
+        const bodyMat = new THREE.MeshPhongMaterial({ color: 0x98fb98, shininess: 50, transparent: true, opacity: 0.85 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.name = "CellBody";
+        group.add(body);
+        const nucGeo = new THREE.SphereGeometry(0.35, 12, 10);
+        const nucMat = new THREE.MeshPhongMaterial({ color: 0x228b22, shininess: 80 });
+        const nuc = new THREE.Mesh(nucGeo, nucMat);
+        nuc.name = "Nucleus";
+        group.add(nuc);
+        const glowGeo = new THREE.SphereGeometry(1.0, 16, 12);
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.1 });
+        const glow = new THREE.Mesh(glowGeo, glowMat);
+        glow.name = "Glow";
+        group.add(glow);
+        return group;
+    },
+
     createAsset(entityId) {
         switch (entityId) {
             case "dr_doom": return this.createDrDoom();
@@ -323,6 +673,19 @@ const AssetLibrary = {
             case "human_cell": return this.createHumanCell();
             case "phagosome": return this.createPhagosome();
             case "phagolysosome": return this.createPhagolysosome();
+            case "neutrophil": return this.createNeutrophil();
+            case "lymphocyte": return this.createLymphocyte();
+            case "red_blood_cell": return this.createRedBloodCell();
+            case "cancer_cell": return this.createCancerCell();
+            case "neuron": return this.createNeuron();
+            case "virus": return this.createVirus();
+            case "brain": return this.createBrain();
+            case "heart": return this.createHeart();
+            case "blood_vessel": return this.createBloodVessel();
+            case "dna": return this.createDNA();
+            case "antibody": return this.createAntibody();
+            case "receptor": return this.createReceptor();
+            case "stem_cell": return this.createStemCell();
             default: return new THREE.Group();
         }
     }

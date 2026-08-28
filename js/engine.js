@@ -450,16 +450,50 @@ class AnimationEngine {
     _animateDrDoom(delta) {
         const doc = this.entities["dr_doom"];
         if (!doc) return;
-
-        // Idle breathing
         const time = this.clock.elapsedTime;
         doc.position.y = Math.sin(time * 1.5) * 0.03;
-
-        // Subtle arm idle
         if (!this.isPlaying) {
             const rightArm = doc.getObjectByName("RightArm");
-            if (rightArm) {
-                rightArm.rotation.z = -0.5 + Math.sin(time * 2) * 0.1;
+            if (rightArm) rightArm.rotation.z = -0.5 + Math.sin(time * 2) * 0.1;
+        }
+
+        // Idle animations for ALL entities
+        for (const [id, entity] of Object.entries(this.entities)) {
+            if (id === "dr_doom") continue;
+            // Gentle float
+            entity.position.y += Math.sin(time * 1.2 + entity.id) * 0.001;
+            // Gentle rotation for some models
+            if (id === "virus" || id === "dna" || id === "antibody") {
+                entity.rotation.y += 0.005;
+            }
+            if (id === "heart") {
+                const beat = 1 + Math.sin(time * 4) * 0.03;
+                entity.scale.setScalar(beat);
+            }
+            if (id === "red_blood_cell") {
+                entity.rotation.x += 0.003;
+                entity.position.y += Math.sin(time * 2) * 0.002;
+            }
+            if (id === "neuron") {
+                entity.children.forEach(child => {
+                    if (child.name === "Nucleus") {
+                        child.material.emissive = new THREE.Color(0xffd700);
+                        child.material.emissiveIntensity = 0.2 + Math.sin(time * 3) * 0.15;
+                    }
+                });
+            }
+            if (id === "cancer_cell") {
+                entity.rotation.y += 0.008;
+                entity.rotation.x += 0.004;
+            }
+            if (id === "brain") {
+                entity.rotation.y = Math.sin(time * 0.3) * 0.05;
+            }
+            if (id === "stem_cell") {
+                const glow = entity.getObjectByName("Glow");
+                if (glow && glow.material) {
+                    glow.material.opacity = 0.08 + Math.sin(time * 2) * 0.05;
+                }
             }
         }
     }
