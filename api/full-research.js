@@ -13,9 +13,9 @@ module.exports = async (req, res) => {
   if (!topic) return res.status(400).json({ error: "Topic required" });
 
   try {
-    const research = await researchTopic(topic);
-    const synthesized = Synthesizer.synthesize(topic, research);
-    res.json({ research, synthesized });
+    const researchResult = await researchTopic(topic);
+    const synthesized = Synthesizer.synthesize(topic, researchResult.research);
+    res.json({ research: researchResult, synthesized });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
