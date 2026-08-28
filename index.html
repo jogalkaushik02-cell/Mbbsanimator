@@ -37,6 +37,10 @@
                 <div class="research-spinner"></div>
                 <h3>Researching: <span id="researchTopic"></span></h3>
             </div>
+            <div class="progress-bar-container" id="progressBarContainer">
+                <div class="progress-bar" id="progressBar"></div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
             <div class="research-sources" id="researchSources">
                 <div class="source-item" id="src-pubmed">⏳ PubMed</div>
                 <div class="source-item" id="src-openalex">⏳ OpenAlex</div>
@@ -84,8 +88,10 @@
                 <div class="card narration-card">
                     <h3>🎙️ Narration</h3>
                     <div id="narrationText" class="narration-text">Enter a topic and press Research to begin</div>
-                    <button id="voiceToggle" class="btn btn-small">🔊 Voice: ON</button>
-                    <button id="recordBtn" class="btn btn-record">⏺ Record Video</button>
+                    <div class="narration-btns">
+                        <button id="voiceToggle" class="btn btn-small">🔊 Voice: ON</button>
+                        <button id="recordBtn" class="btn btn-record">⏺ Record</button>
+                    </div>
                 </div>
             </aside>
 
@@ -125,6 +131,14 @@
                 </div>
             </aside>
         </main>
+
+        <!-- Mobile Bottom Nav -->
+        <nav class="mobile-nav" id="mobileNav">
+            <button class="mobile-nav-btn active" data-panel="topic">🔬</button>
+            <button class="mobile-nav-btn" data-panel="viewport">🎬</button>
+            <button class="mobile-nav-btn" data-panel="info">📋</button>
+            <button class="mobile-nav-btn" data-panel="quiz">📝</button>
+        </nav>
 
         <footer class="bottom-bar">
             <span id="statusText">Ready - Enter a medical topic and press Research</span>

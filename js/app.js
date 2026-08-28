@@ -10,6 +10,7 @@ const App = {
     currentQuizIndex: 0,
     researchData: null,
     isRecording: false,
+    progressInterval: null,
 
     async init() {
         setTimeout(() => {
@@ -53,7 +54,6 @@ const App = {
             if (this.currentQuiz.length > 0) this.showQuiz();
         });
 
-        // Record button
         document.getElementById("recordBtn").addEventListener("click", () => this.toggleRecording());
 
         document.getElementById("speedSlider").addEventListener("input", (e) => {
@@ -89,6 +89,48 @@ const App = {
                 document.getElementById("zoomSlider").value = this.engine.cameraDistance;
             }
         });
+
+        // Mobile bottom nav
+        this.setupMobileNav();
+    },
+
+    setupMobileNav() {
+        const navBtns = document.querySelectorAll(".mobile-nav-btn");
+        navBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                navBtns.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                const panel = btn.dataset.panel;
+                this.switchMobilePanel(panel);
+            });
+        });
+    },
+
+    switchMobilePanel(panel) {
+        const leftSidebar = document.querySelector(".sidebar.left-sidebar");
+        const rightSidebar = document.querySelector(".sidebar.right-sidebar");
+        const viewport = document.querySelector(".viewport-section");
+
+        leftSidebar.classList.remove("mobile-active");
+        rightSidebar.classList.remove("mobile-active");
+        viewport.classList.remove("mobile-hidden");
+
+        switch (panel) {
+            case "topic":
+                leftSidebar.classList.add("mobile-active");
+                viewport.classList.add("mobile-hidden");
+                break;
+            case "viewport":
+                break;
+            case "info":
+                rightSidebar.classList.add("mobile-active");
+                viewport.classList.add("mobile-hidden");
+                break;
+            case "quiz":
+                rightSidebar.classList.add("mobile-active");
+                viewport.classList.add("mobile-hidden");
+                break;
+        }
     },
 
     // ---- VIDEO RECORDING ----
@@ -123,6 +165,34 @@ const App = {
         }
     },
 
+    // ---- PROGRESS BAR ----
+
+    startProgressBar(totalSteps) {
+        this.progressTotal = totalSteps;
+        this.progressDone = 0;
+        this.updateProgressBar();
+    },
+
+    updateProgressBar() {
+        if (this.progressTotal === 0) return;
+        const pct = Math.min(100, Math.round((this.progressDone / this.progressTotal) * 100));
+        const bar = document.getElementById("progressBar");
+        const text = document.getElementById("progressText");
+        if (bar) bar.style.width = pct + "%";
+        if (text) text.textContent = pct + "%";
+    },
+
+    finishProgressBar() {
+        const bar = document.getElementById("progressBar");
+        const text = document.getElementById("progressText");
+        if (bar) bar.style.width = "100%";
+        if (text) text.textContent = "100%";
+        setTimeout(() => {
+            if (bar) bar.style.width = "0%";
+            if (text) text.textContent = "0%";
+        }, 1500);
+    },
+
     // ---- RESEARCH ----
 
     async startResearch() {
@@ -142,6 +212,27 @@ const App = {
         document.getElementById("searchBtn").disabled = true;
         document.getElementById("researchStatus").textContent = "Searching all databases in parallel...";
 
+        // Start progress bar: 7 databases + 1 synthesis = 8 steps
+        this.startProgressBar(8);
+
+        // Simulate incremental progress while waiting
+        const progressSteps = ["PubMed", "OpenAlex", "CrossRef", "SemanticScholar", "Wikipedia", "GoogleScholar", "DuckDuckGo", "Synthesizing"];
+        let currentStep = 0;
+        this.progressInterval = setInterval(() => {
+            if (currentStep < progressSteps.length) {
+                document.getElementById("researchStatus").textContent = "Searching " + progressSteps[currentStep] + "...";
+                currentStep++;
+                this.progressDone = currentStep;
+                this.updateProgressBar();
+                // Update source indicators as we go
+                if (currentStep <= 7) {
+                    const srcIds = ["pubmed", "openalex", "crossref", "semantic", "wikipedia", "scholar", "duckduckgo"];
+                    const el = document.getElementById("src-" + srcIds[currentStep - 1]);
+                    if (el) el.className = "source-item loading";
+                }
+            }
+        }, 2000);
+
         try {
             const res = await fetch("/api/full-research", {
                 method: "POST",
@@ -149,9 +240,12 @@ const App = {
                 body: JSON.stringify({ topic })
             });
 
+            if (this.progressInterval) clearInterval(this.progressInterval);
+
             if (res.ok) {
                 const data = await res.json();
                 this.researchData = data;
+                this.finishProgressBar();
                 this.updateSourceIndicators(data.research);
                 this.displayResearchResults(data.research);
                 document.getElementById("researchStatus").textContent = `Found ${data.research.sourcesFound || 0} sources`;
@@ -162,11 +256,14 @@ const App = {
                     this.createGenericAnimation(topic);
                 }
             } else {
+                this.finishProgressBar();
                 const errText = await res.text().catch(() => "Unknown error");
                 document.getElementById("researchStatus").textContent = "Research failed (" + res.status + ")";
                 document.getElementById("statusText").textContent = "Server error: " + errText;
             }
         } catch (err) {
+            if (this.progressInterval) clearInterval(this.progressInterval);
+            this.finishProgressBar();
             console.error("Research error:", err);
             document.getElementById("researchStatus").textContent = "Error: " + (err.message || "Connection failed");
             document.getElementById("statusText").textContent = "Failed to reach server. Check internet and try again.";
@@ -394,10 +491,9 @@ const App = {
             badge.style.borderColor = "var(--success)";
             badge.style.color = "var(--success)";
         } else {
-            badge.textContent = "🔴 Offline - No Internet";
+            badge.textContent = "🔴 Offline";
             badge.style.borderColor = "var(--error)";
             badge.style.color = "var(--error)";
-            document.getElementById("statusText").textContent = "No internet connection. Please connect to use the app.";
         }
     }
 };
