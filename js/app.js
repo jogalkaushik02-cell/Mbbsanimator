@@ -201,6 +201,22 @@ const App = {
         document.getElementById("searchBtn").disabled = true;
         document.getElementById("researchStatus").textContent = "Searching all databases...";
 
+        // Countdown timer - ~15 seconds estimated
+        this.researchStartTime = Date.now();
+        this.researchEstimatedMs = 15000;
+        this.researchTimerEl = document.getElementById("researchTimer");
+        this.researchTimerInterval = setInterval(() => {
+            const elapsed = Date.now() - this.researchStartTime;
+            const remaining = Math.max(0, this.researchEstimatedMs - elapsed);
+            const sec = Math.ceil(remaining / 1000);
+            if (sec > 0) {
+                this.researchTimerEl.textContent = "~" + sec + "s";
+            } else {
+                const overSec = Math.floor(elapsed / 1000);
+                this.researchTimerEl.textContent = overSec + "s...";
+            }
+        }, 250);
+
         this.startProgressBar(8);
 
         const dbNames = ["PubMed", "OpenAlex", "CrossRef", "SemanticScholar", "Wikipedia", "GoogleScholar", "DuckDuckGo"];
@@ -225,11 +241,13 @@ const App = {
             });
 
             if (this.progressInterval) clearInterval(this.progressInterval);
+            if (this.researchTimerInterval) clearInterval(this.researchTimerInterval);
 
             if (res.ok) {
                 const data = await res.json();
                 this.researchData = data;
                 this.finishProgressBar();
+                this.researchTimerEl.textContent = "Done!";
                 this.updateSourceIndicators(data.research);
                 this.displayResearchResults(data.research);
                 document.getElementById("researchStatus").textContent = "Found " + (data.research.sourcesFound || 0) + " sources";
@@ -246,7 +264,9 @@ const App = {
             }
         } catch (err) {
             if (this.progressInterval) clearInterval(this.progressInterval);
+            if (this.researchTimerInterval) clearInterval(this.researchTimerInterval);
             this.finishProgressBar();
+            this.researchTimerEl.textContent = "Failed";
             document.getElementById("researchStatus").textContent = "Error: " + (err.message || "Connection failed");
             document.getElementById("statusText").textContent = "Connection error. Check internet.";
         }
